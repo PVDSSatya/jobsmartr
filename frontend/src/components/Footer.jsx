@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
         <div className="col-span-2">
           <div className="font-heading font-black text-2xl tracking-tighter">Job Smartr</div>
-          <p className="text-sm text-[#6B7280] mt-3 max-w-sm">AI-powered career intelligence for the Indian job market. Check your ATS score, discover roles, and land the interview.</p>
+          <p className="text-sm text-[#6B7280] mt-3 max-w-sm">AI-powered career intelligence for the growing job market. Check your ATS score, discover roles, and land the interview.</p>
         </div>
         <div>
           <div className="eyebrow mb-3">Product</div>
@@ -27,7 +27,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-[#E5E5E5] py-5 px-6 text-center text-xs text-[#6B7280]">
-        © {new Date().getFullYear()} Job Smartr — Built for the Indian job market.
+        © {new Date().getFullYear()} Job Smartr — Built for the growing job market.
       </div>
     </footer>
   );
