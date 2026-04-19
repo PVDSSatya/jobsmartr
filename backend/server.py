@@ -1,5 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status, Request, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -13,6 +12,7 @@ import jwt as pyjwt
 import logging
 import secrets
 import asyncio
+import httpx
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
@@ -33,13 +33,13 @@ JWT_SECRET = os.environ['JWT_SECRET']
 EMERGENT_LLM_KEY = os.environ['EMERGENT_LLM_KEY']
 JWT_ALG = 'HS256'
 JWT_EXP_DAYS = 30
+EMERGENT_AUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
 client = AsyncIOMotorClient(mongo_url)
 db = client[DB_NAME]
 
 app = FastAPI(title="Job Smartr API")
 api_router = APIRouter(prefix="/api")
-bearer = HTTPBearer(auto_error=False)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -71,6 +71,11 @@ class AffiliateTrack(BaseModel):
 class UpgradeReq(BaseModel):
     plan: str  # "pro" | "premium"
 
+class SessionReq(BaseModel):
+    session_id: str
+    referral_code: Optional[str] = None
+
+
 class UserOut(BaseModel):
     id: str
     name: str
@@ -98,18 +103,41 @@ def make_token(user_id: str) -> str:
     }
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
 
-async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)):
-    if not creds:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        payload = pyjwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALG])
-        user_id = payload.get("sub")
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = await db.users.find_one({"id": user_id}, {"_id": 0})
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
+async def get_current_user(request: Request):
+    # 1) Try Bearer JWT (existing form-login flow)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+        try:
+            payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+            uid = payload.get("sub")
+            if uid:
+                user = await db.users.find_one({"id": uid}, {"_id": 0})
+                if user:
+                    return user
+        except Exception:
+            pass  # fall through to cookie auth
+
+    # 2) Try session_token cookie (Emergent Google OAuth)
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        sess = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
+        if sess:
+            exp = sess.get("expires_at")
+            if isinstance(exp, str):
+                try:
+                    exp = datetime.fromisoformat(exp)
+                except Exception:
+                    exp = None
+            if exp is not None:
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=timezone.utc)
+                if exp >= datetime.now(timezone.utc):
+                    user = await db.users.find_one({"id": sess["user_id"]}, {"_id": 0})
+                    if user:
+                        return user
+
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 # =============== FILE PARSING ===============
@@ -320,6 +348,105 @@ async def reset_password(req: ResetReq):
 @api_router.get("/auth/me")
 async def me(user=Depends(get_current_user)):
     return {"id": user["id"], "name": user["name"], "email": user["email"], "plan": user.get("plan", "free"), "scans_used": user.get("scans_used", 0), "created_at": user["created_at"]}
+
+
+# =============== GOOGLE OAUTH (Emergent Managed) ===============
+@api_router.post("/auth/session")
+async def auth_session(req: SessionReq, response: Response):
+    """Exchange Emergent session_id for a persistent server session + cookie."""
+    # Call Emergent to resolve the session_id into user data + session_token
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as hc:
+            r = await hc.get(EMERGENT_AUTH_SESSION_URL, headers={"X-Session-ID": req.session_id})
+    except Exception as e:
+        logger.error(f"Emergent auth call failed: {e}")
+        raise HTTPException(status_code=502, detail="Auth provider unreachable")
+
+    if r.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    data = r.json()
+    email = (data.get("email") or "").lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="No email from provider")
+
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user:
+        user_id = str(uuid.uuid4())
+        user_doc = {
+            "id": user_id,
+            "name": data.get("name") or email.split("@")[0],
+            "email": email,
+            "password_hash": "",  # OAuth users have no password
+            "plan": "free",
+            "scans_used": 0,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "referred_by": None,
+            "picture": data.get("picture"),
+            "auth_provider": "google",
+        }
+        # Referral attribution
+        if req.referral_code:
+            aff = await db.affiliates.find_one({"code": req.referral_code.upper()}, {"_id": 0})
+            if aff:
+                user_doc["referred_by"] = aff["user_id"]
+                await db.referrals.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "affiliate_user_id": aff["user_id"],
+                    "referred_user_id": user_id,
+                    "code": aff["code"],
+                    "signup_at": datetime.now(timezone.utc).isoformat(),
+                })
+                await db.affiliates.update_one({"user_id": aff["user_id"]}, {"$inc": {"signups": 1}})
+        await db.users.insert_one(user_doc)
+        user = user_doc
+    else:
+        # Link provider info if missing
+        updates = {}
+        if not user.get("picture") and data.get("picture"):
+            updates["picture"] = data["picture"]
+        if not user.get("auth_provider"):
+            updates["auth_provider"] = "google"
+        if updates:
+            await db.users.update_one({"id": user["id"]}, {"$set": updates})
+
+    # Persist session
+    session_token = data.get("session_token")
+    if not session_token:
+        raise HTTPException(status_code=502, detail="Provider missing session_token")
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    await db.user_sessions.insert_one({
+        "user_id": user["id"],
+        "session_token": session_token,
+        "expires_at": expires_at.isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=7 * 24 * 60 * 60,
+        path="/",
+    )
+
+    return {
+        "user": {
+            "id": user["id"], "name": user["name"], "email": user["email"],
+            "plan": user.get("plan", "free"), "scans_used": user.get("scans_used", 0),
+            "created_at": user["created_at"],
+        }
+    }
+
+
+@api_router.post("/auth/logout")
+async def auth_logout(request: Request, response: Response):
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        await db.user_sessions.delete_one({"session_token": session_token})
+    response.delete_cookie(key="session_token", path="/", samesite="none", secure=True)
+    return {"ok": True}
 
 
 # =============== RESUME ROUTES ===============

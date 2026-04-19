@@ -1,0 +1,39 @@
+{
+  "summary": "Backend-only testing of the new Emergent-managed Google OAuth session layer added on top of the existing JWT auth. Created /app/backend/tests/test_oauth_session.py (15 tests) covering POST /api/auth/session (422 on missing session_id, 401 on invalid upstream), POST /api/auth/logout (idempotent 200 with and without cookie, DB row deletion verified), GET /api/auth/me via cookie (valid, expired, missing, unknown, invalid-Bearer-fallback-to-cookie), and protected endpoints (/api/dashboard, /api/affiliate/become, /api/affiliate/dashboard) reachable via session_token cookie. Also re-ran the full 28-test JWT regression suite. Total 43/43 passing (15 new + 28 regression) = 100%. The get_current_user refactor does NOT regress any existing JWT behavior.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_oauth_session.py",
+    "/app/backend/tests/test_backend.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_oauth_results.xml",
+    "/app/test_reports/pytest/pytest_regression_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "POST /api/auth/session sets cookie with samesite='none', secure=True, httponly=True — correct for cross-site OAuth redirect, but note that in pure-HTTP dev environments the cookie will be rejected. Fine for deployed preview (HTTPS).",
+    "user_sessions records are created on EVERY /api/auth/session call, which could produce duplicate rows for the same session_token if Emergent ever returns the same token twice. Consider upsert on session_token or unique index.",
+    "Expired sessions are filtered at read-time in get_current_user but never garbage-collected from Mongo. Consider a TTL index on expires_at (or a background sweep).",
+    "OAuth user creation sets password_hash='' — ensure /api/auth/login rejects empty-string passwords for OAuth-only accounts; bcrypt.checkpw('somepw', '') returns False so it is safe today, but worth an explicit guard.",
+    "CORS middleware uses allow_credentials=True together with allow_origins derived from CORS_ORIGINS='*' (wildcard split). Browsers reject credentialed requests with Access-Control-Allow-Origin: *. Since .env currently has '*', cookie-based auth calls from a different origin would fail in a real browser. Frontend is same-origin via ingress so it works, but CORS_ORIGINS should be tightened to the actual frontend origin for production.",
+    "/api/auth/logout calls response.delete_cookie with samesite='none', secure=True — matches set_cookie attributes (good). No issue.",
+    "session_id in POST /api/auth/session is sent to an external Emergent URL with no rate limiting or retry — httpx timeout=15s is fine; consider logging the upstream status_code even on success for traceability.",
+    "Existing minor items from iteration_1 still stand (server.py length, /api/job-match not incrementing scans_used, /api/affiliate/track 'signup' event unused)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_oauth_session.py (created)"
+  ],
+  "success_rate": {"backend": "100% (43/43 tests: 15 new OAuth + 28 regression)", "frontend": "not tested (backend-only request)"},
+  "test_credentials": "OAuth tests seed TEST_-prefixed users + sessions directly in MongoDB (MONGO_URL/DB_NAME from /app/backend/.env) and clean up via fixture teardown. JWT regression tests use dynamic unique emails per run (test_<ts>_<pid>@jobsmartr.com / test1234).",
+  "seed_data_creation": "Each oauth_session fixture run inserts one users row (id='TEST_oauth_user_<ts>_<hex>') + one user_sessions row with TEST_session_ prefix, deleted on teardown. No long-lived test data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "To re-run OAuth tests only: `cd /app/backend/tests && pytest test_oauth_session.py -v` (~2s, no AI calls). Full suite: `pytest test_oauth_session.py test_backend.py -v` (~2m15s due to 3 Claude Sonnet 4.5 calls in test_backend.py). Cookie fixtures use pymongo (sync) to seed users + user_sessions; match user_id to users.id exactly and use ISO-format expires_at. REACT_APP_BACKEND_URL resolved from /app/frontend/.env. The 'invalid session_id -> 401' test calls the real Emergent upstream and will auto-skip to 'pass via 502' only if upstream is unreachable; in this run it returned the expected 401."
+}

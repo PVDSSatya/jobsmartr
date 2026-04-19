@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
+import GoogleButton from "../components/GoogleButton";
 import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
 
 export default function Login() {
@@ -65,7 +66,13 @@ export default function Login() {
           <div className="w-full max-w-md animate-fade-up">
             <div className="eyebrow mb-2">Login</div>
             <h1 className="font-heading font-black text-4xl tracking-tighter mb-8">Sign in to Job Smartr</h1>
-            <form onSubmit={onSubmit} className="border border-[#E5E5E5] bg-white p-8 space-y-5">
+            <form onSubmit={onSubmit} className="border border-[#ECEEF1] bg-white rounded-md p-8 space-y-5">
+              <GoogleButton testid="login-google-btn" />
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-[#ECEEF1]" />
+                <span className="eyebrow text-[10px]">or</span>
+                <div className="flex-1 h-px bg-[#ECEEF1]" />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="eyebrow">Email</Label>
                 <Input id="email" type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="rounded-md border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="login-email" />

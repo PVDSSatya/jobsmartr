@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
+import GoogleButton from "../components/GoogleButton";
 import api from "../lib/api";
 import { ArrowRight, CheckCircle2, Zap, Sparkles } from "lucide-react";
 
@@ -49,7 +50,13 @@ export default function Signup() {
             <div className="eyebrow mb-2">Start free</div>
             <h1 className="font-heading font-black text-4xl tracking-tighter mb-2">Create your account</h1>
             <p className="text-sm text-[#6B7280] mb-6">2 free scans. No card needed.</p>
-            <form onSubmit={onSubmit} className="border border-[#E5E5E5] bg-white p-8 space-y-5">
+            <form onSubmit={onSubmit} className="border border-[#ECEEF1] bg-white rounded-md p-8 space-y-5">
+              <GoogleButton referralCode={referral} testid="signup-google-btn" label="Sign up with Google" />
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-[#ECEEF1]" />
+                <span className="eyebrow text-[10px]">or</span>
+                <div className="flex-1 h-px bg-[#ECEEF1]" />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="name" className="eyebrow">Full name</Label>
                 <Input id="name" required value={name} onChange={(e)=>setName(e.target.value)} className="rounded-md border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="signup-name" />

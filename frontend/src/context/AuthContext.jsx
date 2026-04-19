@@ -8,8 +8,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("js_token");
-    if (!token) { setLoading(false); return; }
+    // CRITICAL: If returning from Emergent OAuth callback, skip the /me check.
+    // AuthCallback will exchange session_id and establish the session first.
+    if (typeof window !== "undefined" && window.location.hash?.includes("session_id=")) {
+      setLoading(false);
+      return;
+    }
     api.get("/auth/me")
       .then((r) => setUser(r.data))
       .catch(() => { localStorage.removeItem("js_token"); })
@@ -30,14 +34,21 @@ export const AuthProvider = ({ children }) => {
     return r.data.user;
   };
 
-  const logout = () => { localStorage.removeItem("js_token"); setUser(null); };
+  const logout = async () => {
+    try { await api.post("/auth/logout"); } catch { /* noop */ }
+    localStorage.removeItem("js_token");
+    setUser(null);
+  };
 
   const refresh = async () => {
     try { const r = await api.get("/auth/me"); setUser(r.data); } catch { /* noop */ }
   };
 
+  // Used by AuthCallback to set user after OAuth session exchange
+  const setAuthenticatedUser = (u) => setUser(u);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, refresh, setAuthenticatedUser }}>
       {children}
     </AuthContext.Provider>
   );

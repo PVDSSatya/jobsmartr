@@ -3,7 +3,8 @@ import axios from "axios";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API_BASE = `${BACKEND_URL}/api`;
 
-const api = axios.create({ baseURL: API_BASE });
+// withCredentials so session_token cookie flows on cross-origin requests
+const api = axios.create({ baseURL: API_BASE, withCredentials: true });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("js_token");
@@ -14,9 +15,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (err?.response?.status === 401) {
-      // Let components handle redirect
-    }
+    // Let components handle 401 redirect
     return Promise.reject(err);
   }
 );
