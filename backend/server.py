@@ -1,74 +1,580 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
-import logging
-from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+import io
+import re
+import json
 import uuid
-from datetime import datetime, timezone
+import bcrypt
+import jwt as pyjwt
+import logging
+import secrets
+import asyncio
+from pathlib import Path
+from pydantic import BaseModel, Field, EmailStr
+from typing import List, Optional, Dict, Any
+from datetime import datetime, timezone, timedelta
 
+from pypdf import PdfReader
+from docx import Document as DocxDocument
+
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
+# Env
 mongo_url = os.environ['MONGO_URL']
+DB_NAME = os.environ['DB_NAME']
+JWT_SECRET = os.environ['JWT_SECRET']
+EMERGENT_LLM_KEY = os.environ['EMERGENT_LLM_KEY']
+JWT_ALG = 'HS256'
+JWT_EXP_DAYS = 30
+
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[DB_NAME]
 
-# Create the main app without a prefix
-app = FastAPI()
-
-# Create a router with the /api prefix
+app = FastAPI(title="Job Smartr API")
 api_router = APIRouter(prefix="/api")
+bearer = HTTPBearer(auto_error=False)
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+# =============== MODELS ===============
+class SignupReq(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    referral_code: Optional[str] = None
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class LoginReq(BaseModel):
+    email: EmailStr
+    password: str
 
-# Add your routes to the router instead of directly to app
+class ResetReq(BaseModel):
+    email: EmailStr
+    new_password: str
+
+class JobMatchReq(BaseModel):
+    resume_id: str
+    job_description: str
+
+class AffiliateTrack(BaseModel):
+    code: str
+    event: str  # "click" | "signup"
+
+class UpgradeReq(BaseModel):
+    plan: str  # "pro" | "premium"
+
+class UserOut(BaseModel):
+    id: str
+    name: str
+    email: str
+    plan: str = "free"
+    scans_used: int = 0
+    created_at: str
+
+
+# =============== AUTH HELPERS ===============
+def hash_pw(pw: str) -> str:
+    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
+
+def verify_pw(pw: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(pw.encode(), hashed.encode())
+    except Exception:
+        return False
+
+def make_token(user_id: str) -> str:
+    payload = {
+        "sub": user_id,
+        "exp": datetime.now(timezone.utc) + timedelta(days=JWT_EXP_DAYS),
+        "iat": datetime.now(timezone.utc),
+    }
+    return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
+
+async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)):
+    if not creds:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = pyjwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALG])
+        user_id = payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
+# =============== FILE PARSING ===============
+def extract_text_from_pdf(data: bytes) -> str:
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        return "\n".join((p.extract_text() or "") for p in reader.pages)
+    except Exception as e:
+        logger.error(f"PDF parse error: {e}")
+        return ""
+
+def extract_text_from_docx(data: bytes) -> str:
+    try:
+        doc = DocxDocument(io.BytesIO(data))
+        return "\n".join(p.text for p in doc.paragraphs)
+    except Exception as e:
+        logger.error(f"DOCX parse error: {e}")
+        return ""
+
+
+# =============== AI LAYER (Claude Sonnet 4.5) ===============
+def _strip_json(text: str) -> str:
+    # strip ```json fences if any
+    t = text.strip()
+    if t.startswith("```"):
+        t = re.sub(r"^```(?:json)?\s*", "", t)
+        t = re.sub(r"\s*```$", "", t)
+    # extract first JSON object
+    first = t.find("{")
+    last = t.rfind("}")
+    if first != -1 and last != -1 and last > first:
+        return t[first:last+1]
+    return t
+
+async def _llm_json(system_msg: str, user_text: str, session_id: str) -> Dict[str, Any]:
+    chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=session_id, system_message=system_msg)\
+        .with_model("anthropic", "claude-sonnet-4-5-20250929")
+    resp = await chat.send_message(UserMessage(text=user_text))
+    try:
+        return json.loads(_strip_json(resp))
+    except Exception as e:
+        logger.error(f"LLM JSON parse fail: {e}; raw={resp[:500]}")
+        raise HTTPException(status_code=502, detail="AI response parse error")
+
+
+async def ai_analyze_resume(resume_text: str) -> Dict[str, Any]:
+    system = (
+        "You are an expert ATS (Applicant Tracking System) and career intelligence analyzer for the Indian job market. "
+        "Analyze resumes and return STRICT JSON only. No prose, no markdown fences. All salaries in INR (₹) per year."
+    )
+    prompt = f"""Analyze the following resume and produce a JSON object with this EXACT schema:
+
+{{
+  "parsed": {{
+    "name": "string",
+    "email": "string",
+    "phone": "string",
+    "skills": ["string", ...],
+    "experience": [{{"role":"string","company":"string","duration":"string","bullets":["string",...]}}],
+    "education": [{{"degree":"string","institution":"string","year":"string"}}],
+    "projects": [{{"name":"string","description":"string"}}]
+  }},
+  "ats": {{
+    "total": 0,
+    "breakdown": {{
+      "keyword_match": 0,
+      "skills_match": 0,
+      "experience_relevance": 0,
+      "formatting": 0,
+      "education": 0
+    }}
+  }},
+  "heatmap": [
+    {{"section":"Summary","status":"green|yellow|red","comment":"string"}},
+    {{"section":"Experience","status":"green|yellow|red","comment":"string"}},
+    {{"section":"Skills","status":"green|yellow|red","comment":"string"}},
+    {{"section":"Education","status":"green|yellow|red","comment":"string"}},
+    {{"section":"Projects","status":"green|yellow|red","comment":"string"}},
+    {{"section":"Formatting","status":"green|yellow|red","comment":"string"}}
+  ],
+  "weaknesses": ["string", ...],
+  "suggestions": ["string", ...],
+  "recommended_jobs": [
+    {{"role":"string","match":85,"salary_min_lpa":6,"salary_max_lpa":12,"why":"string"}}
+  ],
+  "skill_gaps": [{{"skill":"string","reason":"string","unlocks_role":"string"}}],
+  "missing_keywords": ["string", ...]
+}}
+
+Scoring rules: keyword_match max 35, skills_match max 20, experience_relevance max 20, formatting max 15, education max 10. total is sum. Recommend at least 4 roles with Indian salary ranges (LPA = Lakhs per annum in INR).
+
+RESUME TEXT:
+<<<
+{resume_text[:12000]}
+>>>"""
+    return await _llm_json(system, prompt, f"analyze-{uuid.uuid4()}")
+
+
+async def ai_job_match(resume_text: str, jd: str) -> Dict[str, Any]:
+    system = "You are an ATS JD-matching engine. Return STRICT JSON only."
+    prompt = f"""Compare this resume against the job description. Return JSON:
+{{
+  "match_score": 0,
+  "matched_keywords": ["string",...],
+  "missing_keywords": ["string",...],
+  "strengths": ["string",...],
+  "gaps": ["string",...],
+  "verdict": "string (1-2 sentences)"
+}}
+Resume:
+<<<
+{resume_text[:8000]}
+>>>
+
+Job Description:
+<<<
+{jd[:4000]}
+>>>"""
+    return await _llm_json(system, prompt, f"jdmatch-{uuid.uuid4()}")
+
+
+async def ai_optimize_resume(resume_text: str, analysis: Dict[str, Any]) -> Dict[str, Any]:
+    system = "You are a senior resume coach. Return STRICT JSON only."
+    weaknesses = analysis.get("weaknesses", [])
+    missing = analysis.get("missing_keywords", [])
+    prompt = f"""Rewrite the weakest parts of this resume. Return JSON:
+{{
+  "optimized_summary": "string (2-3 lines, professional, impact-driven)",
+  "rewritten_bullets": [
+    {{"original":"string","improved":"string","why":"string"}}
+  ],
+  "added_keywords": ["string",...],
+  "action_verbs_used": ["string",...],
+  "projected_ats_gain": 12
+}}
+Provide 6-10 rewritten bullets. Use strong action verbs, add metrics where reasonable, and weave in missing keywords.
+
+Focus weaknesses: {weaknesses}
+Missing keywords to weave in: {missing}
+
+Resume:
+<<<
+{resume_text[:8000]}
+>>>"""
+    return await _llm_json(system, prompt, f"opt-{uuid.uuid4()}")
+
+
+# =============== AUTH ROUTES ===============
+@api_router.post("/auth/signup")
+async def signup(req: SignupReq):
+    existing = await db.users.find_one({"email": req.email.lower()}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user_id = str(uuid.uuid4())
+    doc = {
+        "id": user_id,
+        "name": req.name,
+        "email": req.email.lower(),
+        "password_hash": hash_pw(req.password),
+        "plan": "free",
+        "scans_used": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "referred_by": None,
+    }
+    # referral attribution
+    if req.referral_code:
+        aff = await db.affiliates.find_one({"code": req.referral_code.upper()}, {"_id": 0})
+        if aff:
+            doc["referred_by"] = aff["user_id"]
+            await db.referrals.insert_one({
+                "id": str(uuid.uuid4()),
+                "affiliate_user_id": aff["user_id"],
+                "referred_user_id": user_id,
+                "code": aff["code"],
+                "signup_at": datetime.now(timezone.utc).isoformat(),
+            })
+            await db.affiliates.update_one({"user_id": aff["user_id"]}, {"$inc": {"signups": 1}})
+    await db.users.insert_one(doc)
+    token = make_token(user_id)
+    return {
+        "token": token,
+        "user": {"id": user_id, "name": doc["name"], "email": doc["email"], "plan": "free", "scans_used": 0, "created_at": doc["created_at"]},
+    }
+
+
+@api_router.post("/auth/login")
+async def login(req: LoginReq):
+    user = await db.users.find_one({"email": req.email.lower()}, {"_id": 0})
+    if not user or not verify_pw(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = make_token(user["id"])
+    return {
+        "token": token,
+        "user": {"id": user["id"], "name": user["name"], "email": user["email"], "plan": user.get("plan", "free"), "scans_used": user.get("scans_used", 0), "created_at": user["created_at"]},
+    }
+
+
+@api_router.post("/auth/reset-password")
+async def reset_password(req: ResetReq):
+    user = await db.users.find_one({"email": req.email.lower()}, {"_id": 0})
+    if not user:
+        # Do not reveal existence
+        return {"ok": True, "message": "If the account exists, password has been reset."}
+    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_pw(req.new_password)}})
+    return {"ok": True, "message": "Password has been reset. Please login."}
+
+
+@api_router.get("/auth/me")
+async def me(user=Depends(get_current_user)):
+    return {"id": user["id"], "name": user["name"], "email": user["email"], "plan": user.get("plan", "free"), "scans_used": user.get("scans_used", 0), "created_at": user["created_at"]}
+
+
+# =============== RESUME ROUTES ===============
+@api_router.post("/resumes/upload")
+async def upload_resume(file: UploadFile = File(...), user=Depends(get_current_user)):
+    # Plan check
+    plan = user.get("plan", "free")
+    used = user.get("scans_used", 0)
+    if plan == "free" and used >= 2:
+        raise HTTPException(status_code=402, detail="Free plan limit reached. Upgrade to Pro for unlimited scans.")
+
+    data = await file.read()
+    name = (file.filename or "resume").lower()
+    if name.endswith(".pdf"):
+        text = extract_text_from_pdf(data)
+    elif name.endswith(".docx"):
+        text = extract_text_from_docx(data)
+    else:
+        raise HTTPException(status_code=400, detail="Only PDF and DOCX supported")
+    if not text or len(text.strip()) < 50:
+        raise HTTPException(status_code=400, detail="Could not extract readable text from file")
+
+    resume_id = str(uuid.uuid4())
+    doc = {
+        "id": resume_id,
+        "user_id": user["id"],
+        "filename": file.filename,
+        "text": text,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "uploaded",
+    }
+    await db.resumes.insert_one(doc)
+    return {"id": resume_id, "filename": file.filename, "text_length": len(text), "status": "uploaded"}
+
+
+@api_router.post("/resumes/{resume_id}/analyze")
+async def analyze_resume(resume_id: str, user=Depends(get_current_user)):
+    resume = await db.resumes.find_one({"id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    # If cached analysis exists return it
+    existing = await db.analyses.find_one({"resume_id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if existing:
+        return existing
+
+    analysis = await ai_analyze_resume(resume["text"])
+    interview_prob = round(analysis.get("ats", {}).get("total", 0) * 0.6 + 50 * 0.4, 1)
+    analysis_doc = {
+        "id": str(uuid.uuid4()),
+        "resume_id": resume_id,
+        "user_id": user["id"],
+        "analysis": analysis,
+        "interview_probability": interview_prob,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.analyses.insert_one(analysis_doc)
+    await db.resumes.update_one({"id": resume_id}, {"$set": {"status": "analyzed"}})
+    await db.users.update_one({"id": user["id"]}, {"$inc": {"scans_used": 1}})
+    analysis_doc.pop("_id", None)
+    return analysis_doc
+
+
+@api_router.get("/resumes")
+async def list_resumes(user=Depends(get_current_user)):
+    items = await db.resumes.find({"user_id": user["id"]}, {"_id": 0, "text": 0}).sort("created_at", -1).to_list(100)
+    # enrich with ats score if analyzed
+    for r in items:
+        a = await db.analyses.find_one({"resume_id": r["id"]}, {"_id": 0, "analysis.ats": 1, "interview_probability": 1})
+        r["ats_total"] = (a or {}).get("analysis", {}).get("ats", {}).get("total") if a else None
+        r["interview_probability"] = (a or {}).get("interview_probability") if a else None
+    return items
+
+
+@api_router.get("/resumes/{resume_id}")
+async def get_resume(resume_id: str, user=Depends(get_current_user)):
+    resume = await db.resumes.find_one({"id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    analysis = await db.analyses.find_one({"resume_id": resume_id}, {"_id": 0})
+    return {"resume": resume, "analysis": analysis}
+
+
+@api_router.post("/job-match")
+async def job_match(req: JobMatchReq, user=Depends(get_current_user)):
+    if user.get("plan", "free") == "free" and user.get("scans_used", 0) >= 2:
+        raise HTTPException(status_code=402, detail="Upgrade to Pro for unlimited job matches")
+    resume = await db.resumes.find_one({"id": req.resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    result = await ai_job_match(resume["text"], req.job_description)
+    # Also compute interview prob with ATS
+    analysis = await db.analyses.find_one({"resume_id": req.resume_id}, {"_id": 0})
+    ats_total = (analysis or {}).get("analysis", {}).get("ats", {}).get("total", 50)
+    interview_prob = round(ats_total * 0.6 + result.get("match_score", 0) * 0.4, 1)
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "resume_id": req.resume_id,
+        "job_description": req.job_description[:500],
+        "result": result,
+        "interview_probability": interview_prob,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.job_matches.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.post("/resumes/{resume_id}/optimize")
+async def optimize_resume(resume_id: str, user=Depends(get_current_user)):
+    if user.get("plan", "free") == "free":
+        raise HTTPException(status_code=402, detail="AI Resume Optimization is a Pro feature. Please upgrade.")
+    resume = await db.resumes.find_one({"id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    analysis = await db.analyses.find_one({"resume_id": resume_id}, {"_id": 0})
+    analysis_payload = (analysis or {}).get("analysis", {})
+    result = await ai_optimize_resume(resume["text"], analysis_payload)
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "resume_id": resume_id,
+        "result": result,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.optimizations.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+# =============== DASHBOARD ===============
+@api_router.get("/dashboard")
+async def dashboard(user=Depends(get_current_user)):
+    resumes = await db.resumes.find({"user_id": user["id"]}, {"_id": 0, "text": 0}).sort("created_at", -1).to_list(20)
+    # attach ats
+    recent = []
+    best_ats = 0
+    for r in resumes:
+        a = await db.analyses.find_one({"resume_id": r["id"]}, {"_id": 0})
+        ats_total = (a or {}).get("analysis", {}).get("ats", {}).get("total")
+        interview_prob = (a or {}).get("interview_probability")
+        r["ats_total"] = ats_total
+        r["interview_probability"] = interview_prob
+        if ats_total and ats_total > best_ats:
+            best_ats = ats_total
+        recent.append(r)
+    total_scans = len(resumes)
+    return {
+        "user": {
+            "id": user["id"], "name": user["name"], "email": user["email"],
+            "plan": user.get("plan", "free"), "scans_used": user.get("scans_used", 0),
+        },
+        "recent_resumes": recent[:10],
+        "stats": {
+            "total_scans": total_scans,
+            "best_ats_score": best_ats,
+            "scans_remaining": ("unlimited" if user.get("plan", "free") != "free" else max(0, 2 - user.get("scans_used", 0))),
+        },
+    }
+
+
+# =============== AFFILIATE ===============
+def gen_code():
+    return secrets.token_hex(4).upper()
+
+@api_router.post("/affiliate/become")
+async def become_affiliate(user=Depends(get_current_user)):
+    existing = await db.affiliates.find_one({"user_id": user["id"]}, {"_id": 0})
+    if existing:
+        return existing
+    code = gen_code()
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "code": code,
+        "clicks": 0,
+        "signups": 0,
+        "earnings_inr": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.affiliates.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.get("/affiliate/dashboard")
+async def affiliate_dashboard(user=Depends(get_current_user)):
+    aff = await db.affiliates.find_one({"user_id": user["id"]}, {"_id": 0})
+    if not aff:
+        return {"affiliate": None, "referrals": [], "commissions": []}
+    referrals = await db.referrals.find({"affiliate_user_id": user["id"]}, {"_id": 0}).sort("signup_at", -1).to_list(200)
+    commissions = await db.commissions.find({"affiliate_user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return {"affiliate": aff, "referrals": referrals, "commissions": commissions}
+
+
+@api_router.post("/affiliate/track")
+async def affiliate_track(req: AffiliateTrack):
+    aff = await db.affiliates.find_one({"code": req.code.upper()}, {"_id": 0})
+    if not aff:
+        return {"ok": False}
+    if req.event == "click":
+        await db.affiliates.update_one({"code": req.code.upper()}, {"$inc": {"clicks": 1}})
+    return {"ok": True}
+
+
+# =============== SUBSCRIPTION (mocked) ===============
+PLAN_PRICES = {"pro": 399, "premium": 999}
+
+@api_router.post("/subscription/upgrade")
+async def upgrade(req: UpgradeReq, user=Depends(get_current_user)):
+    if req.plan not in PLAN_PRICES:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"plan": req.plan}})
+    sub_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "plan": req.plan,
+        "price_inr": PLAN_PRICES[req.plan],
+        "status": "active",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "mock": True,
+    }
+    await db.subscriptions.insert_one(sub_doc)
+
+    # 30% recurring commission to referrer
+    refby = user.get("referred_by")
+    if refby:
+        commission = round(PLAN_PRICES[req.plan] * 0.30, 2)
+        await db.commissions.insert_one({
+            "id": str(uuid.uuid4()),
+            "affiliate_user_id": refby,
+            "referred_user_id": user["id"],
+            "plan": req.plan,
+            "amount_inr": commission,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        await db.affiliates.update_one({"user_id": refby}, {"$inc": {"earnings_inr": commission}})
+    sub_doc.pop("_id", None)
+    return sub_doc
+
+
+@api_router.get("/subscription")
+async def get_subscription(user=Depends(get_current_user)):
+    sub = await db.subscriptions.find_one({"user_id": user["id"], "status": "active"}, {"_id": 0}, sort=[("created_at", -1)])
+    return {"plan": user.get("plan", "free"), "subscription": sub}
+
+
+# =============== HEALTH ===============
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Job Smartr API", "status": "ok"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
-
-# Include the router in the main app
 app.include_router(api_router)
-
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -77,12 +583,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

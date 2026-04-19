@@ -1,0 +1,38 @@
+{
+  "summary": "Comprehensive backend testing of Job Smartr API completed. All 28 pytest cases passed (100%). Covered: health, auth (signup/login/reset/me + 401), PDF+DOCX resume upload with file-type validation, Claude Sonnet 4.5 AI analysis (ATS breakdown, heatmap, recommended jobs with LPA, interview probability), job description match, Free plan 2-scan enforcement (402), optimize gating on Free (402), mock subscription upgrade to Pro, optimize working after upgrade, dashboard stats, affiliate flow (become/idempotency/track/invalid code), referral attribution + 30% commission credited to affiliate.earnings_inr on Pro upgrade, and user-level resume isolation (404 for other users).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backend.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "GET /api/resumes/{id} only checks resume ownership but fetches analysis by resume_id alone (not user_id) — currently fine because resume-ownership gate blocks access, but analyses query should also scope by user_id for defense-in-depth.",
+    "Free plan limit only gates UPLOAD (line 331). A Free user who already uploaded 2 resumes before reaching limit can still call /analyze repeatedly on same resume_id (analysis is cached so practically not an abuse, but worth noting). The 2-scan ceiling is effectively enforced at upload-time which matches intent.",
+    "/api/job-match uses scans_used limit on Free plan but does not increment scans_used — inconsistent with semantics (either it's a scan or it isn't). Low severity.",
+    "/api/affiliate/track only handles 'click' events; 'signup' event documented in model but not implemented (attribution happens at signup endpoint). Consider removing unused event type or wiring it up.",
+    "CORSMiddleware uses allow_credentials=True with allow_origins potentially '*' (split of '*') — browsers reject credentialed requests with wildcard. Since frontend uses Bearer in Authorization header (not cookies), works in practice, but should be tightened for prod.",
+    "server.py is ~590 lines — approaching the 700-line threshold; consider splitting into routers (auth, resumes, affiliate, subscription) and services (ai.py, parsing.py) before it grows further.",
+    "_strip_json extracts first { to last } which could include stray braces inside code fences; currently works because Claude returns single JSON object, but brittle for complex prompts.",
+    "Affiliate commission is created on every upgrade POST — if a referred user upgrades twice (re-hits endpoint), referrer gets paid twice. Consider idempotency on active subscription."
+  ],
+  "updated_files": [
+    "/app/backend/tests/conftest.py (created)",
+    "/app/backend/tests/test_backend.py (created)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "not tested (backend-only request)"},
+  "test_credentials": "Used dynamic unique email per run: test_<ts>_<pid>@jobsmartr.com / test1234. Also verified /app/memory/test_credentials.md (test@jobsmartr.com / test1234) exists.",
+  "seed_data_creation": "Each run creates fresh users (prefixed test_, test_iso_, test_ref_) with an auto-generated PDF & DOCX resume via reportlab/python-docx. No pre-seeded data required.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run: `cd /app/backend/tests && pytest test_backend.py -v`. Tests take ~2 minutes due to 3 Claude Sonnet 4.5 calls (analyze + job-match + optimize). Test data is fresh per run so no cleanup dependency. BASE_URL read from /app/frontend/.env REACT_APP_BACKEND_URL. reportlab installed via pip. If a future agent tests frontend, signup/login/upload are green and safe to rely on."
+}
