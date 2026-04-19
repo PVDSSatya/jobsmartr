@@ -1,0 +1,152 @@
+{
+  "theme_archetype": "Archetype 4: Swiss & High-Contrast",
+  "theme_mode": "light",
+  "design_philosophy": "Authoritative, data-rich, and high-impact. The UI must feel like a precision tool for career intelligence. We prioritize structure over decoration. Color is functional only—used strictly to guide action, highlight ATS scores, and indicate warnings. The background is a stark off-white, surfaces are pure white, and borders are explicitly defined to expose the structural grid.",
+  "colors": {
+    "background": "#FAFAFA",
+    "foreground": "#0A192F",
+    "surface": "#FFFFFF",
+    "surface_foreground": "#0A192F",
+    "border": "#E5E5E5",
+    "primary": "#0055FF",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#0A192F",
+    "secondary_foreground": "#FFFFFF",
+    "accent_success": "#34C759",
+    "accent_warning": "#FFCC00",
+    "accent_danger": "#FF3B30",
+    "muted": "#F3F4F6",
+    "muted_foreground": "#6B7280",
+    "ring": "#0055FF"
+  },
+  "typography": {
+    "font_families": {
+      "headings": "Cabinet Grotesk, sans-serif",
+      "body": "Satoshi, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter leading-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-tight",
+      "h3": "text-xl sm:text-2xl font-bold tracking-tight",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-base font-normal leading-relaxed text-[#0A192F]",
+      "small": "text-sm text-[#6B7280]",
+      "overline": "text-xs font-bold uppercase tracking-[0.2em] text-[#6B7280]"
+    },
+    "rules": [
+      "Headings strictly use Cabinet Grotesk with negative tracking (tracking-tight or tracking-tighter).",
+      "Do NOT use Inter or Roboto for any text elements.",
+      "Labels and overlines must use tracking-[0.2em] uppercase styling.",
+      "Ensure minimum 4.5:1 contrast ratio for all body text."
+    ]
+  },
+  "spacing_and_layout": {
+    "philosophy": "Grid Borders ('The Technical Look'). Dashboards should feel like a 'Control Room' with dense data, while the Landing Page uses the 'Tetris' bento layout for high asymmetry.",
+    "container_padding": "p-6 sm:p-8 lg:p-12",
+    "dashboard_grid": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+    "landing_grid": "grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-8 lg:gap-12",
+    "borderRadius": {
+      "none": "0",
+      "sm": "0.25rem",
+      "DEFAULT": "0",
+      "md": "0.375rem"
+    },
+    "rules": [
+      "Dashboards heavily utilize 1px borders (border-collapse look).",
+      "Inner paddings for cards must be generous (p-6 or p-8).",
+      "Mobile images and major elements capped at max-h-[80vh]."
+    ]
+  },
+  "components_strategy": {
+    "buttons": {
+      "primary": "bg-[#0055FF] text-white hover:bg-[#0044CC] rounded-none px-6 py-3 font-semibold transition-colors",
+      "secondary": "bg-[#0A192F] text-white hover:bg-black rounded-none px-6 py-3 font-semibold transition-colors",
+      "outline": "border border-[#0A192F] text-[#0A192F] hover:bg-[#F3F4F6] rounded-none px-6 py-3 font-semibold transition-colors"
+    },
+    "cards": {
+      "default": "bg-white border border-[#E5E5E5] rounded-none shadow-sm",
+      "hover": "hover:-translate-y-1 hover:shadow-md transition-all duration-300"
+    },
+    "data_visualization": {
+      "library": "recharts",
+      "styles": "Use sharp lines, solid fills, and strict adherence to the brand accent colors (Green/Yellow/Red for ATS scores). Do NOT use soft gradients in charts."
+    },
+    "icons": {
+      "library": "lucide-react",
+      "stroke_width": "2",
+      "sizing": "w-5 h-5 for inline, w-8 h-8 for featured blocks"
+    },
+    "shadcn_overrides": [
+      "Override all default Shadcn radiuses to rounded-none or rounded-sm.",
+      "Override the Vercel-like soft shadows to crisp 1px borders + slight shadow-sm.",
+      "Tablists must have h-auto to prevent clipping."
+    ]
+  },
+  "image_assets": {
+    "hero_backgrounds": [
+      {
+        "url": "https://images.pexels.com/photos/2524198/pexels-photo-2524198.jpeg",
+        "description": "Modern urban glass office building reflecting sunset. Use in Landing Page hero with an overlay.",
+        "overlay": "bg-black/40 (if white text) or bg-white/70 backdrop-blur-md (if dark text)"
+      }
+    ],
+    "abstract_tech": [
+      {
+        "url": "https://images.unsplash.com/photo-1772050138768-2107c6e62a03",
+        "description": "Abstract green light trails. Good for background in the 'Resume Scan Processing' screen or AI Optimization features."
+      },
+      {
+        "url": "https://images.pexels.com/photos/14314638/pexels-photo-14314638.jpeg",
+        "description": "Digital spheres interconnected. Good for 'Job Match calculation' loading state."
+      }
+    ],
+    "portraits": [
+      {
+        "url": "https://images.pexels.com/photos/7580940/pexels-photo-7580940.jpeg",
+        "description": "Smiling Indian professional man (Testimonial 1)"
+      },
+      {
+        "url": "https://images.pexels.com/photos/7580822/pexels-photo-7580822.jpeg",
+        "description": "Confident Indian professional woman (Testimonial 2)"
+      }
+    ],
+    "company_logos": [
+      {
+        "url": "https://images.unsplash.com/photo-1661347998423-b15d37d6f61e",
+        "description": "Tech company logo placeholder (Grayscale filter recommended)"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1760138270903-d95903188730",
+        "description": "Konica Minolta logo (Grayscale filter recommended)"
+      },
+      {
+        "url": "https://images.pexels.com/photos/5620312/pexels-photo-5620312.jpeg",
+        "description": "Abstract tech chrome logo focus"
+      }
+    ],
+    "rules": [
+      "NEVER use external placeholders like via.placeholder.com.",
+      "Images inside feature grids should be purely functional or highly stylized macro shots."
+    ]
+  },
+  "motion_and_interactions": {
+    "global_transition": "transition-all duration-300 ease-in-out",
+    "hover_states": "All interactive elements MUST specify hover:bg and hover:text explicitly.",
+    "focus_states": "focus:outline-none focus:ring-2 focus:ring-[#0055FF] focus:ring-offset-2",
+    "animations": {
+      "entrance": "Staggered fade-in-up (translate-y-4 opacity-0 to opacity-100) for lists and dashboard cards.",
+      "progress_rings": "Stroke-dashoffset transition from 0 to actual score for dramatic effect."
+    }
+  },
+  "testing_requirements": {
+    "data_testid": "MANDATORY on all buttons, links, form inputs, score elements, and interactive modals.",
+    "format": "kebab-case-role-based (e.g., 'resume-upload-dropzone', 'ats-score-circular-chart')"
+  },
+  "page_specific_instructions": {
+    "landing_page": "Use high-contrast sections. A stark white hero, followed by a dark obsidian (#0A192F) feature section, reverting to white for pricing. Use large typography.",
+    "dashboard": "Keep strictly light theme with `#FAFAFA` background. Data density is king. Use 1px borders between widgets.",
+    "results_page": "The ATS score circular chart is the centerpiece. Surround it with bento-style cards detailing Missing Keywords, Heatmap sections, and Interview Probability.",
+    "career_insights": "Salary ranges must be explicitly formatted in ₹ (INR). Use clear bar charts or horizontal progress bars to indicate where the user falls on the salary bell curve."
+  }
+}
