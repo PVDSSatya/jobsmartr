@@ -326,7 +326,12 @@ async def signup(req: SignupReq):
 @api_router.post("/auth/login")
 async def login(req: LoginReq):
     user = await db.users.find_one({"email": req.email.lower()}, {"_id": 0})
-    if not user or not verify_pw(req.password, user["password_hash"]):
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    # Explicitly block password login for OAuth-only accounts (password_hash == "")
+    if not user.get("password_hash"):
+        raise HTTPException(status_code=401, detail="This account uses Google sign-in. Please continue with Google.")
+    if not verify_pw(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = make_token(user["id"])
     return {
