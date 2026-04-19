@@ -46,25 +46,25 @@ export default function Signup() {
         {/* Left form */}
         <div className="flex items-center justify-center p-6 sm:p-12 order-2 lg:order-1">
           <div className="w-full max-w-md animate-fade-up">
-            <div className="overline mb-2">Start free</div>
+            <div className="eyebrow mb-2">Start free</div>
             <h1 className="font-heading font-black text-4xl tracking-tighter mb-2">Create your account</h1>
             <p className="text-sm text-[#6B7280] mb-6">2 free scans. No card needed.</p>
             <form onSubmit={onSubmit} className="border border-[#E5E5E5] bg-white p-8 space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="name" className="overline">Full name</Label>
-                <Input id="name" required value={name} onChange={(e)=>setName(e.target.value)} className="rounded-none border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="signup-name" />
+                <Label htmlFor="name" className="eyebrow">Full name</Label>
+                <Input id="name" required value={name} onChange={(e)=>setName(e.target.value)} className="rounded-md border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="signup-name" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="overline">Email</Label>
-                <Input id="email" type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="rounded-none border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="signup-email" />
+                <Label htmlFor="email" className="eyebrow">Email</Label>
+                <Input id="email" type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="rounded-md border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="signup-email" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="overline">Password</Label>
-                <Input id="password" type="password" required minLength={6} value={password} onChange={(e)=>setPassword(e.target.value)} className="rounded-none border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="signup-password" />
+                <Label htmlFor="password" className="eyebrow">Password</Label>
+                <Input id="password" type="password" required minLength={6} value={password} onChange={(e)=>setPassword(e.target.value)} className="rounded-md border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="signup-password" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="ref" className="overline">Referral code (optional)</Label>
-                <Input id="ref" value={referral} onChange={(e)=>setReferral(e.target.value)} className="rounded-none border-[#E5E5E5] font-mono focus-visible:ring-[#0055FF]" data-testid="signup-ref" />
+                <Label htmlFor="ref" className="eyebrow">Referral code (optional)</Label>
+                <Input id="ref" value={referral} onChange={(e)=>setReferral(e.target.value)} className="rounded-md border-[#E5E5E5] font-mono focus-visible:ring-[#0055FF]" data-testid="signup-ref" />
               </div>
               <Button type="submit" disabled={loading} className="btn-primary w-full group" data-testid="signup-submit">
                 {loading ? "Creating…" : (<>Create account <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" /></>)}
@@ -88,10 +88,10 @@ export default function Signup() {
           </Link>
 
           <div className="relative">
-            <div className="overline text-white/50 mb-4">Get hired smarter</div>
+            <div className="eyebrow text-white/50 mb-4">Get hired smarter</div>
             <h2 className="font-heading font-black text-5xl tracking-tighter leading-[0.95]">One upload. A full career map.</h2>
             <div className="mt-10 border border-white/10 p-5 bg-white/5 backdrop-blur-sm">
-              <div className="flex items-center gap-2 overline text-white/60 mb-3"><Sparkles className="w-4 h-4" /> What you'll see</div>
+              <div className="flex items-center gap-2 eyebrow text-white/60 mb-3"><Sparkles className="w-4 h-4" /> What you'll see</div>
               <ul className="space-y-2.5 text-sm">
                 {['ATS score with 5-way breakdown', 'Color-coded resume heatmap', 'Recommended jobs with ₹ LPA', 'Interview probability %', 'Skill gaps that unlock higher salary'].map((t) => (
                   <li key={t} className="flex items-center gap-3 text-white/85"><CheckCircle2 className="w-4 h-4 text-[#34C759] flex-shrink-0" /> {t}</li>

@@ -12,7 +12,7 @@ export default function Profile() {
     <div className="min-h-screen bg-[#FAFAFA]" data-testid="profile-page">
       <Navbar />
       <div className="max-w-3xl mx-auto px-6 py-12">
-        <div className="overline mb-2">Account</div>
+        <div className="eyebrow mb-2">Account</div>
         <h1 className="font-heading font-black text-4xl sm:text-5xl tracking-tighter mb-8">Your profile</h1>
 
         <div className="border border-[#E5E5E5] bg-white divide-y divide-[#E5E5E5]">
@@ -35,7 +35,7 @@ export default function Profile() {
 function Row({ label, value, testid }) {
   return (
     <div className="flex items-center justify-between p-5" data-testid={testid}>
-      <span className="overline">{label}</span>
+      <span className="eyebrow">{label}</span>
       <span className="font-heading font-bold tracking-tight">{value}</span>
     </div>
   );

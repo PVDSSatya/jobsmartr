@@ -41,7 +41,7 @@ function ScoreRing({ score, size = 200 }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <div className="font-heading font-black text-6xl tracking-tighter text-[#0A192F]">{display}</div>
-        <div className="overline mt-1">out of 100</div>
+        <div className="eyebrow mt-1">out of 100</div>
       </div>
     </div>
   );
@@ -126,12 +126,12 @@ export default function Results() {
         <div className="absolute inset-0 grid-lines opacity-60" />
         <div className="absolute -top-40 -right-40 w-[420px] h-[420px] rounded-full blur-3xl opacity-[0.06]" style={{ background: verdictColor }} />
         <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-10">
-          <Link to="/dashboard" className="inline-flex items-center gap-2 overline text-[#6B7280] hover:text-[#0055FF] mb-4"><ArrowLeft className="w-3 h-3" /> Back to Dashboard</Link>
+          <Link to="/dashboard" className="inline-flex items-center gap-2 eyebrow text-[#6B7280] hover:text-[#0055FF] mb-4"><ArrowLeft className="w-3 h-3" /> Back to Dashboard</Link>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="animate-fade-up">
               <div className="flex items-center gap-3 mb-2">
-                <div className="overline">Analysis Results</div>
-                <span className="overline px-2 py-0.5" style={{ background: `${verdictColor}18`, color: verdictColor }}>{verdict}</span>
+                <div className="eyebrow">Analysis Results</div>
+                <span className="eyebrow px-2 py-0.5" style={{ background: `${verdictColor}18`, color: verdictColor }}>{verdict}</span>
               </div>
               <h1 className="font-heading font-black text-4xl sm:text-5xl tracking-tighter text-[#0A192F]">{data.resume.filename}</h1>
               <p className="text-sm text-[#6B7280] mt-3 font-mono">
@@ -157,15 +157,15 @@ export default function Results() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
           {/* Score ring */}
           <div className="lg:col-span-4 border border-[#E5E5E5] bg-white p-8 flex flex-col items-center">
-            <div className="overline mb-6">ATS Score</div>
+            <div className="eyebrow mb-6">ATS Score</div>
             <ScoreRing score={total} />
             <div className="w-full border-t border-[#E5E5E5] mt-8 pt-5 grid grid-cols-2 text-center">
               <div>
-                <div className="overline mb-1">Interview</div>
+                <div className="eyebrow mb-1">Interview</div>
                 <div className="font-heading font-black text-3xl tracking-tighter" data-testid="interview-prob" style={{ color: verdictColor }}>{ip}%</div>
               </div>
               <div className="border-l border-[#E5E5E5]">
-                <div className="overline mb-1">Verdict</div>
+                <div className="eyebrow mb-1">Verdict</div>
                 <div className="font-heading font-black text-3xl tracking-tighter">{verdict}</div>
               </div>
             </div>
@@ -176,7 +176,7 @@ export default function Results() {
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-[#0A192F]" />
-                <div className="overline">Score Breakdown</div>
+                <div className="eyebrow">Score Breakdown</div>
               </div>
               <div className="text-xs font-mono text-[#6B7280]">max 100</div>
             </div>
@@ -203,7 +203,7 @@ export default function Results() {
           <div className="lg:col-span-6 border border-[#E5E5E5] bg-white p-6">
             <div className="flex items-center gap-2 mb-5">
               <TargetIcon className="w-4 h-4 text-[#0A192F]" />
-              <div className="overline">Resume Heatmap</div>
+              <div className="eyebrow">Resume Heatmap</div>
             </div>
             <ul className="divide-y divide-[#E5E5E5]" data-testid="heatmap-list">
               {heatmap.map((h, i) => (
@@ -213,7 +213,7 @@ export default function Results() {
                     <div className="font-heading font-bold tracking-tight">{h.section}</div>
                     <div className="text-sm text-[#6B7280] leading-relaxed mt-1">{h.comment}</div>
                   </div>
-                  <span className="overline px-2 py-0.5 flex-shrink-0" style={{ color: statusColor(h.status), background: `${statusColor(h.status)}15` }}>{h.status}</span>
+                  <span className="eyebrow px-2 py-0.5 flex-shrink-0" style={{ color: statusColor(h.status), background: `${statusColor(h.status)}15` }}>{h.status}</span>
                 </li>
               ))}
             </ul>
@@ -223,7 +223,7 @@ export default function Results() {
           <div className="lg:col-span-6 border border-[#E5E5E5] bg-white p-6">
             <div className="flex items-center gap-2 mb-5">
               <Zap className="w-4 h-4 text-[#FF3B30]" />
-              <div className="overline">Missing Keywords</div>
+              <div className="eyebrow">Missing Keywords</div>
             </div>
             <div className="flex flex-wrap gap-2" data-testid="missing-keywords">
               {missing.length === 0 && <div className="text-sm text-[#6B7280]">No major keywords missing — great job.</div>}
@@ -232,7 +232,7 @@ export default function Results() {
               ))}
             </div>
             <div className="border-t border-[#E5E5E5] mt-6 pt-5">
-              <div className="overline mb-3">Weaknesses to Address</div>
+              <div className="eyebrow mb-3">Weaknesses to Address</div>
               <ul className="text-sm space-y-2.5">
                 {(a.weaknesses || []).map((w, i) => (
                   <li key={i} className="flex gap-3 items-start"><span className="w-1 h-1 rounded-full bg-[#FF3B30] mt-2 flex-shrink-0" /><span className="leading-relaxed">{w}</span></li>
@@ -247,7 +247,7 @@ export default function Results() {
           <div className="lg:col-span-7 border border-[#E5E5E5] bg-white p-6">
             <div className="flex items-center gap-2 mb-5">
               <Award className="w-4 h-4 text-[#0055FF]" />
-              <div className="overline">AI Suggestions</div>
+              <div className="eyebrow">AI Suggestions</div>
             </div>
             <ul className="space-y-4" data-testid="suggestions-list">
               {(a.suggestions || []).map((s, i) => (
@@ -263,21 +263,21 @@ export default function Results() {
             <div className="absolute inset-0 grid-lines-dark" />
             <div className="absolute -right-20 -bottom-20 w-64 h-64 rounded-full bg-[#0055FF]/20 blur-3xl" />
             <div className="relative">
-              <div className="overline text-white/60 mb-3">One-click</div>
+              <div className="eyebrow text-white/60 mb-3">One-click</div>
               <h3 className="font-heading font-black text-3xl tracking-tighter mb-3">Optimize My Resume</h3>
               <p className="text-sm text-white/70 mb-5 leading-relaxed">Rewrite weak bullets, add missing keywords, strengthen action verbs and metrics — in seconds.</p>
-              <Button onClick={optimize} disabled={optimizing} className="bg-[#0055FF] hover:bg-[#0044CC] rounded-none font-semibold group" data-testid="optimize-btn">
+              <Button onClick={optimize} disabled={optimizing} className="bg-[#0055FF] hover:bg-[#0044CC] rounded-md font-semibold group" data-testid="optimize-btn">
                 {optimizing ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Optimizing…</>) : (<><Sparkles className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" /> Optimize My Resume</>)}
               </Button>
 
               {optimized && (
                 <div className="mt-6 space-y-5 text-sm animate-fade-up">
                   <div className="border-l-2 border-[#34C759] pl-4">
-                    <div className="overline text-white/60 mb-2">New Summary</div>
+                    <div className="eyebrow text-white/60 mb-2">New Summary</div>
                     <p className="text-white/90 leading-relaxed">{optimized.optimized_summary}</p>
                   </div>
                   <div>
-                    <div className="overline text-white/60 mb-3">Rewritten Bullets ({optimized.rewritten_bullets?.length || 0})</div>
+                    <div className="eyebrow text-white/60 mb-3">Rewritten Bullets ({optimized.rewritten_bullets?.length || 0})</div>
                     <ul className="space-y-3 max-h-80 overflow-y-auto pr-2">
                       {optimized.rewritten_bullets?.map((b, i) => (
                         <li key={i} className="border border-white/10 p-3 hover:border-[#0055FF]/50 transition">

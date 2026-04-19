@@ -32,14 +32,14 @@ export default function JobMatch() {
     <div className="min-h-screen bg-[#FAFAFA]" data-testid="jd-match-page">
       <Navbar />
       <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-10">
-        <div className="overline mb-2">Job Description Match</div>
+        <div className="eyebrow mb-2">Job Description Match</div>
         <h1 className="font-heading font-black text-4xl sm:text-5xl tracking-tighter mb-3">How well does this role fit you?</h1>
         <p className="text-sm text-[#6B7280] mb-8">Paste any JD to see match % and missing keywords.</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-6 border border-[#E5E5E5] bg-white p-6">
-            <div className="overline mb-3">Paste Job Description</div>
-            <Textarea value={jd} onChange={(e)=>setJd(e.target.value)} rows={14} placeholder="Paste the full JD here…" className="rounded-none border-[#E5E5E5] font-mono text-sm" data-testid="jd-textarea" />
+            <div className="eyebrow mb-3">Paste Job Description</div>
+            <Textarea value={jd} onChange={(e)=>setJd(e.target.value)} rows={14} placeholder="Paste the full JD here…" className="rounded-md border-[#E5E5E5] font-mono text-sm" data-testid="jd-textarea" />
             <Button onClick={submit} disabled={loading} className="btn-primary mt-4" data-testid="jd-submit">
               {loading ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching…</>) : (<><Target className="w-4 h-4 mr-2" /> Compute Match</>)}
             </Button>
@@ -60,7 +60,7 @@ export default function JobMatch() {
                     <div className="absolute inset-0 flex items-center justify-center font-heading font-black text-3xl tracking-tighter">{score}%</div>
                   </div>
                   <div className="flex-1">
-                    <div className="overline mb-1">Interview Probability</div>
+                    <div className="eyebrow mb-1">Interview Probability</div>
                     <div className="font-heading font-black text-3xl tracking-tighter">{result.interview_probability}%</div>
                     <div className="text-sm text-[#6B7280] mt-2">{result.result.verdict}</div>
                   </div>
@@ -68,7 +68,7 @@ export default function JobMatch() {
 
                 <div className="border-t border-[#E5E5E5] pt-4 space-y-4">
                   <div>
-                    <div className="overline mb-2">Matched ({result.result.matched_keywords?.length || 0})</div>
+                    <div className="eyebrow mb-2">Matched ({result.result.matched_keywords?.length || 0})</div>
                     <div className="flex flex-wrap gap-2">
                       {(result.result.matched_keywords || []).map((k, i) => (
                         <span key={i} className="border border-[#34C759] text-[#34C759] px-2 py-1 text-xs font-mono flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{k}</span>
@@ -76,7 +76,7 @@ export default function JobMatch() {
                     </div>
                   </div>
                   <div>
-                    <div className="overline mb-2">Missing ({result.result.missing_keywords?.length || 0})</div>
+                    <div className="eyebrow mb-2">Missing ({result.result.missing_keywords?.length || 0})</div>
                     <div className="flex flex-wrap gap-2">
                       {(result.result.missing_keywords || []).map((k, i) => (
                         <span key={i} className="border border-[#FF3B30] text-[#FF3B30] px-2 py-1 text-xs font-mono flex items-center gap-1"><XCircle className="w-3 h-3" />{k}</span>
@@ -85,11 +85,11 @@ export default function JobMatch() {
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <div className="overline mb-2">Strengths</div>
+                      <div className="eyebrow mb-2">Strengths</div>
                       <ul className="space-y-1 text-[#6B7280]">{(result.result.strengths || []).map((s,i)=><li key={i}>• {s}</li>)}</ul>
                     </div>
                     <div>
-                      <div className="overline mb-2">Gaps</div>
+                      <div className="eyebrow mb-2">Gaps</div>
                       <ul className="space-y-1 text-[#6B7280]">{(result.result.gaps || []).map((s,i)=><li key={i}>• {s}</li>)}</ul>
                     </div>
                   </div>

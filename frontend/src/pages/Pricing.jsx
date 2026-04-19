@@ -68,7 +68,7 @@ export default function Pricing() {
       <section className="relative border-b border-[#E5E5E5] bg-white overflow-hidden">
         <div className="absolute inset-0 grid-lines opacity-60" />
         <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 text-center">
-          <div className="overline mb-3">Pricing</div>
+          <div className="eyebrow mb-3">Pricing</div>
           <h1 className="font-heading font-black text-5xl sm:text-6xl lg:text-7xl tracking-tighter text-[#0A192F] text-balance animate-fade-up">Simple. Priced for India.</h1>
           <p className="text-[#6B7280] mt-5 max-w-xl mx-auto">Start free. Upgrade when you want unlimited scans, AI optimization and deeper insights.</p>
 
@@ -108,7 +108,7 @@ export default function Pricing() {
               )}
 
               <div className="relative">
-                <div className="flex items-center gap-2 overline mb-3" style={{ color: p.highlight ? 'rgba(255,255,255,0.6)' : undefined }}>
+                <div className="flex items-center gap-2 eyebrow mb-3" style={{ color: p.highlight ? 'rgba(255,255,255,0.6)' : undefined }}>
                   <p.icon className="w-4 h-4" /> {p.name}
                 </div>
                 <div className="flex items-baseline gap-1">
@@ -129,7 +129,7 @@ export default function Pricing() {
                 </ul>
 
                 <Button onClick={() => upgrade(p.id)}
-                  className={`rounded-none font-semibold w-full group/btn ${p.id === 'pro' ? 'bg-[#0055FF] hover:bg-[#0044CC] text-white' : p.highlight ? 'bg-white text-[#0A192F] hover:bg-white/90' : 'btn-secondary'}`}
+                  className={`rounded-md font-semibold w-full group/btn ${p.id === 'pro' ? 'bg-[#0055FF] hover:bg-[#0044CC] text-white' : p.highlight ? 'bg-white text-[#0A192F] hover:bg-white/90' : 'btn-secondary'}`}
                   data-testid={`select-plan-${p.id}`}>
                   {user?.plan === p.id ? 'Current Plan' : (p.id === 'free' ? 'Get Started' : `Choose ${p.name}`)}
                   <ArrowRight className="w-3 h-3 ml-2 transition-transform group-hover/btn:translate-x-1" />
@@ -148,7 +148,7 @@ export default function Pricing() {
 
       {/* Comparison table */}
       <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-16">
-        <div className="overline mb-3">Compare plans</div>
+        <div className="eyebrow mb-3">Compare plans</div>
         <h2 className="font-heading font-black text-3xl sm:text-4xl tracking-tighter mb-8">Which plan is right for you?</h2>
         <div className="border border-[#E5E5E5] bg-white overflow-hidden">
           {[
@@ -169,10 +169,10 @@ export default function Pricing() {
             </div>
           ))}
           <div className="grid grid-cols-4 border-t-2 border-[#0A192F] bg-[#FAFAFA]">
-            <div className="p-3 text-xs overline">Plan</div>
-            <div className="p-3 text-xs overline text-center border-l border-[#E5E5E5]">Free</div>
-            <div className="p-3 text-xs overline text-center border-l border-[#E5E5E5] text-[#0055FF]">Pro</div>
-            <div className="p-3 text-xs overline text-center border-l border-[#E5E5E5]">Premium</div>
+            <div className="p-3 text-xs eyebrow">Plan</div>
+            <div className="p-3 text-xs eyebrow text-center border-l border-[#E5E5E5]">Free</div>
+            <div className="p-3 text-xs eyebrow text-center border-l border-[#E5E5E5] text-[#0055FF]">Pro</div>
+            <div className="p-3 text-xs eyebrow text-center border-l border-[#E5E5E5]">Premium</div>
           </div>
         </div>
       </section>

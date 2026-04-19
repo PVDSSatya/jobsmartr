@@ -46,7 +46,7 @@ export default function Login() {
           </Link>
 
           <div className="relative">
-            <div className="overline text-white/50 mb-4">Welcome back</div>
+            <div className="eyebrow text-white/50 mb-4">Welcome back</div>
             <h2 className="font-heading font-black text-5xl tracking-tighter leading-[0.95]">Your career intelligence, right where you left it.</h2>
             <ul className="mt-10 space-y-3">
               {['Continue where you stopped', 'Access all your past scans', 'Unlock your AI-optimized resume'].map((t) => (
@@ -63,19 +63,19 @@ export default function Login() {
         {/* Right form side */}
         <div className="flex items-center justify-center p-6 sm:p-12">
           <div className="w-full max-w-md animate-fade-up">
-            <div className="overline mb-2">Login</div>
+            <div className="eyebrow mb-2">Login</div>
             <h1 className="font-heading font-black text-4xl tracking-tighter mb-8">Sign in to Job Smartr</h1>
             <form onSubmit={onSubmit} className="border border-[#E5E5E5] bg-white p-8 space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="overline">Email</Label>
-                <Input id="email" type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="rounded-none border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="login-email" />
+                <Label htmlFor="email" className="eyebrow">Email</Label>
+                <Input id="email" type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="rounded-md border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="login-email" />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="overline">Password</Label>
+                  <Label htmlFor="password" className="eyebrow">Password</Label>
                   <Link to="/reset-password" className="text-xs text-[#0055FF] hover:underline" data-testid="login-forgot">Forgot?</Link>
                 </div>
-                <Input id="password" type="password" required value={password} onChange={(e)=>setPassword(e.target.value)} className="rounded-none border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="login-password" />
+                <Input id="password" type="password" required value={password} onChange={(e)=>setPassword(e.target.value)} className="rounded-md border-[#E5E5E5] focus-visible:ring-[#0055FF]" data-testid="login-password" />
               </div>
               <Button type="submit" disabled={loading} className="btn-primary w-full group" data-testid="login-submit">
                 {loading ? "Signing in…" : (<>Sign in <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" /></>)}

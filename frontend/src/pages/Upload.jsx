@@ -50,10 +50,10 @@ export default function Upload() {
       <div className="absolute inset-0 grid-lines opacity-40 pointer-events-none" />
 
       <div className="relative max-w-5xl mx-auto px-6 py-12 lg:py-16">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 overline text-[#6B7280] hover:text-[#0055FF] mb-6"><ArrowLeft className="w-3 h-3" /> Back to Dashboard</Link>
+        <Link to="/dashboard" className="inline-flex items-center gap-2 eyebrow text-[#6B7280] hover:text-[#0055FF] mb-6"><ArrowLeft className="w-3 h-3" /> Back to Dashboard</Link>
 
         <div className="mb-10 animate-fade-up">
-          <div className="overline mb-2">Step 1 of 1</div>
+          <div className="eyebrow mb-2">Step 1 of 1</div>
           <h1 className="font-heading font-black text-5xl sm:text-6xl tracking-tighter text-[#0A192F]">Upload your resume</h1>
           <p className="text-[#6B7280] text-sm mt-3 max-w-xl">PDF or DOCX only, max 10MB. We extract text, run ATS scoring, and build your career map — in under 60 seconds.</p>
         </div>

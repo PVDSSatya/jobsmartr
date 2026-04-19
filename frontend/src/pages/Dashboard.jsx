@@ -49,7 +49,7 @@ export default function Dashboard() {
         <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="animate-fade-up">
-              <div className="overline mb-2">Dashboard</div>
+              <div className="eyebrow mb-2">Dashboard</div>
               <h1 className="font-heading font-black text-5xl sm:text-6xl tracking-tighter text-[#0A192F]">
                 Hi, {user?.name?.split(' ')[0] || 'there'}.
               </h1>
@@ -77,9 +77,9 @@ export default function Dashboard() {
             <div className="p-6 border-b border-[#E5E5E5] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#0A192F]" />
-                <div className="overline">Previous Scans</div>
+                <div className="eyebrow">Previous Scans</div>
               </div>
-              <Link to="/upload" className="text-xs overline text-[#0055FF] hover:underline">+ New scan</Link>
+              <Link to="/upload" className="text-xs eyebrow text-[#0055FF] hover:underline">+ New scan</Link>
             </div>
             <div className="divide-y divide-[#E5E5E5]">
               {loading && (
@@ -94,7 +94,7 @@ export default function Dashboard() {
                   <div className="w-14 h-14 mx-auto border border-[#0A192F] flex items-center justify-center mb-4">
                     <UploadIcon className="w-6 h-6 text-[#0A192F]" strokeWidth={2} />
                   </div>
-                  <div className="overline mb-2">No scans yet</div>
+                  <div className="eyebrow mb-2">No scans yet</div>
                   <div className="font-heading font-bold text-2xl tracking-tight mb-5">Upload your first resume</div>
                   <Link to="/upload"><Button className="btn-primary" data-testid="empty-upload-cta">Start free scan</Button></Link>
                 </div>
@@ -112,11 +112,11 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-5 pl-4">
                       <div className="text-right">
-                        <div className="overline">ATS</div>
+                        <div className="eyebrow">ATS</div>
                         <div className="font-heading font-black text-xl tracking-tighter" style={{ color: r.ats_total ? color : undefined }}>{r.ats_total ?? '—'}</div>
                       </div>
                       <div className="text-right hidden sm:block">
-                        <div className="overline">Interview</div>
+                        <div className="eyebrow">Interview</div>
                         <div className="font-heading font-black text-xl tracking-tighter">{r.interview_probability ? `${r.interview_probability}%` : '—'}</div>
                       </div>
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -131,7 +131,7 @@ export default function Dashboard() {
           <div className="space-y-6">
             {/* Insights tile */}
             <div className="border border-[#E5E5E5] bg-white p-6 hover-lift hover-shadow">
-              <div className="flex items-center gap-2 overline mb-3"><TrendingUp className="w-4 h-4" /> Career Insights</div>
+              <div className="flex items-center gap-2 eyebrow mb-3"><TrendingUp className="w-4 h-4" /> Career Insights</div>
               <p className="text-sm text-[#6B7280] mb-4 leading-relaxed">After a scan, see recommended roles with match % and ₹ LPA salary ranges.</p>
               <div className="space-y-2 mb-5">
                 {[
@@ -155,13 +155,13 @@ export default function Dashboard() {
             <div className="border border-[#0A192F] bg-[#0A192F] text-white p-6 relative overflow-hidden group hover-lift">
               <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-[#0055FF]/20 blur-2xl group-hover:bg-[#0055FF]/30 transition" />
               <div className="relative">
-                <div className="flex items-center gap-2 overline text-white/60 mb-3"><Crown className="w-4 h-4" /> Subscription</div>
+                <div className="flex items-center gap-2 eyebrow text-white/60 mb-3"><Crown className="w-4 h-4" /> Subscription</div>
                 <div className="font-heading font-black text-4xl tracking-tighter mb-1">{(user?.plan || 'free').toUpperCase()}</div>
                 <div className="text-sm text-white/70 mb-5 leading-relaxed">
                   {user?.plan === 'free' ? 'Unlock unlimited scans, JD match & AI optimization.' : 'You have access to premium tools.'}
                 </div>
                 <Link to="/pricing" data-testid="upgrade-link">
-                  <Button className="bg-[#0055FF] hover:bg-[#0044CC] rounded-none text-white font-semibold group/btn">
+                  <Button className="bg-[#0055FF] hover:bg-[#0044CC] rounded-md text-white font-semibold group/btn">
                     <Sparkles className="w-4 h-4 mr-2 transition-transform group-hover/btn:rotate-12" /> Upgrade
                   </Button>
                 </Link>
@@ -170,7 +170,7 @@ export default function Dashboard() {
 
             {/* Affiliate tile */}
             <div className="border border-[#E5E5E5] bg-white p-6 hover-lift hover-shadow">
-              <div className="flex items-center gap-2 overline mb-3 text-[#34C759]"><Zap className="w-4 h-4" /> Earn 30%</div>
+              <div className="flex items-center gap-2 eyebrow mb-3 text-[#34C759]"><Zap className="w-4 h-4" /> Earn 30%</div>
               <div className="font-heading font-bold text-lg mb-1 tracking-tight">Become an affiliate</div>
               <p className="text-sm text-[#6B7280] mb-4 leading-relaxed">Refer job seekers, earn 30% recurring on every subscription.</p>
               <Link to="/affiliate/dashboard" className="text-sm text-[#0055FF] hover:underline inline-flex items-center gap-1">Open affiliate dashboard <ArrowRight className="w-3 h-3" /></Link>
@@ -185,7 +185,7 @@ export default function Dashboard() {
 function BentoStat({ icon: Icon, label, value, suffix, highlight, color, testid }) {
   return (
     <div className="p-6 border-r last:border-r-0 border-[#E5E5E5] relative overflow-hidden group hover:bg-[#FAFAFA] transition" data-testid={testid}>
-      <div className="flex items-center gap-2 overline mb-3">
+      <div className="flex items-center gap-2 eyebrow mb-3">
         {Icon && <Icon className="w-3.5 h-3.5" />}
         {label}
       </div>

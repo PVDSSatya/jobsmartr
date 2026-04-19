@@ -13,7 +13,7 @@ export default function Affiliate() {
       <section className="bg-white border-b border-[#E5E5E5]">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7">
-            <div className="overline mb-3">Affiliate Program</div>
+            <div className="eyebrow mb-3">Affiliate Program</div>
             <h1 className="font-heading font-black text-5xl lg:text-6xl tracking-tighter text-[#0A192F] leading-none">
               Earn <span className="text-[#34C759]">30%</span> recurring.<br/>Every month. Forever.
             </h1>
@@ -24,7 +24,7 @@ export default function Affiliate() {
             </div>
           </div>
           <div className="lg:col-span-5 border border-[#E5E5E5] p-6 bg-[#FAFAFA]">
-            <div className="overline mb-4">Example Earnings</div>
+            <div className="eyebrow mb-4">Example Earnings</div>
             <div className="space-y-4">
               {[
                 { n: 10, plan: 'Pro', monthly: 10 * 399 * 0.30 },

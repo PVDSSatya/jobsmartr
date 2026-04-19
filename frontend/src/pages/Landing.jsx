@@ -58,7 +58,7 @@ function AtsRing() {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <div className="font-heading font-black text-5xl tracking-tighter text-[#0A192F]">{score}</div>
-        <div className="overline mt-1">ATS Score</div>
+        <div className="eyebrow mt-1">ATS Score</div>
       </div>
     </div>
   );
@@ -74,7 +74,7 @@ function Stat({ value, suffix = '', label, decimals = 0 }) {
       <div className="font-heading font-black text-5xl lg:text-6xl tracking-tighter transition-transform group-hover:scale-[1.02]">
         {display}{suffix}
       </div>
-      <div className="overline text-white/50 mt-3">{label}</div>
+      <div className="eyebrow text-white/50 mt-3">{label}</div>
     </div>
   );
 }
@@ -101,15 +101,10 @@ export default function Landing() {
           <div className={`lg:col-span-7 ${heroIn ? 'animate-fade-up' : 'opacity-0'}`}>
             <div className="inline-flex items-center gap-2 border border-[#0A192F] px-3 py-1.5 mb-6">
               <span className="w-2 h-2 bg-[#34C759] animate-pulse" />
-              <span className="overline">AI Career Intelligence · India</span>
+              <span className="eyebrow">AI Career Intelligence · India</span>
             </div>
             <h1 className="font-heading font-black text-5xl sm:text-6xl lg:text-7xl tracking-tighter leading-[0.95] text-balance text-[#0A192F]">
-              Get hired <span className="relative inline-block">
-                <span className="text-[#0055FF]">smarter</span>
-                <svg className="absolute left-0 -bottom-2 w-full" viewBox="0 0 200 12" preserveAspectRatio="none" height="12" fill="none">
-                  <path d="M2 8 C 50 2, 150 2, 198 8" stroke="#34C759" strokeWidth="4" strokeLinecap="round"/>
-                </svg>
-              </span>,<br/>not harder.
+              Get hired <span className="text-[#0055FF]">smarter</span>,<br/>not harder.
             </h1>
             <p className="text-lg text-[#6B7280] mt-7 max-w-xl leading-relaxed">
               Check your ATS score, discover what jobs you qualify for, and see how much you can earn — powered by an AI career intelligence engine built for India.
@@ -154,7 +149,7 @@ export default function Landing() {
               {/* ATS Snapshot */}
               <div className="col-span-12 border border-[#E5E5E5] bg-white p-6 hover-lift hover-shadow">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="overline">ATS Snapshot</div>
+                  <div className="eyebrow">ATS Snapshot</div>
                   <div className="text-xs font-mono text-[#6B7280]">RESUME.PDF</div>
                 </div>
                 <div className="flex items-end gap-6">
@@ -179,21 +174,21 @@ export default function Landing() {
               </div>
               {/* Match */}
               <div className="col-span-7 border border-[#E5E5E5] bg-[#0A192F] text-white p-5 hover-lift">
-                <div className="overline text-white/50 mb-2">Top Match</div>
+                <div className="eyebrow text-white/50 mb-2">Top Match</div>
                 <div className="font-heading font-black text-xl tracking-tighter">Backend Dev</div>
                 <div className="text-xs text-white/70">78% match · Bengaluru, Remote</div>
                 <div className="mt-3 h-1 bg-white/10"><div className="h-full bg-[#34C759]" style={{ width: '78%' }} /></div>
               </div>
               {/* Salary */}
               <div className="col-span-5 border border-[#E5E5E5] bg-white p-5 hover-lift">
-                <div className="overline mb-2">Salary</div>
+                <div className="eyebrow mb-2">Salary</div>
                 <div className="font-heading font-black text-xl tracking-tighter">₹6–12L</div>
                 <div className="text-xs text-[#6B7280]">per annum · India</div>
               </div>
               {/* Interview Probability */}
               <div className="col-span-12 border border-[#E5E5E5] bg-white p-4 flex items-center justify-between hover-lift">
                 <div>
-                  <div className="overline">Interview Probability</div>
+                  <div className="eyebrow">Interview Probability</div>
                   <div className="font-heading font-black text-2xl tracking-tighter">71%</div>
                 </div>
                 <div className="flex items-center gap-1 text-xs bg-[#34C759]/10 text-[#34C759] px-2 py-1 font-mono">
@@ -208,7 +203,7 @@ export default function Landing() {
       {/* LOGO TICKER */}
       <section className="bg-white border-b border-[#E5E5E5] py-8">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-          <div className="overline text-center mb-5">Candidates at Job Smartr have landed roles at</div>
+          <div className="eyebrow text-center mb-5">Candidates at Job Smartr have landed roles at</div>
           <div className="relative ticker overflow-hidden">
             <div className="flex gap-14 animate-ticker whitespace-nowrap w-max">
               {[...brands, ...brands].map((b, i) => (
@@ -233,7 +228,7 @@ export default function Landing() {
       {/* FEATURES - Bento */}
       <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 lg:py-28">
         <div className="mb-14 max-w-3xl">
-          <div className="overline mb-3">Everything you need</div>
+          <div className="eyebrow mb-3">Everything you need</div>
           <h2 className="font-heading font-black text-4xl sm:text-5xl lg:text-6xl tracking-tighter text-[#0A192F] text-balance">A career intelligence stack — not another resume checker.</h2>
         </div>
 
@@ -247,7 +242,7 @@ export default function Landing() {
             <div className="mt-8 relative grid grid-cols-5 gap-2">
               {[35, 20, 20, 15, 10].map((w, i) => (
                 <div key={i} className="border border-[#E5E5E5] p-3">
-                  <div className="overline text-[10px]">{['KW','SK','EX','FM','ED'][i]}</div>
+                  <div className="eyebrow text-[10px]">{['KW','SK','EX','FM','ED'][i]}</div>
                   <div className="font-heading font-black text-xl tracking-tighter mt-1">{w}</div>
                 </div>
               ))}
@@ -328,7 +323,7 @@ export default function Landing() {
       <section className="bg-white border-y border-[#E5E5E5]">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-4">
-            <div className="overline mb-3">How it works</div>
+            <div className="eyebrow mb-3">How it works</div>
             <h2 className="font-heading font-black text-4xl lg:text-5xl tracking-tighter">Four steps from upload to interview.</h2>
             <p className="text-sm text-[#6B7280] mt-4">No courses. No coaches. Just decisive, actionable signals.</p>
           </div>
@@ -354,7 +349,7 @@ export default function Landing() {
 
       {/* TESTIMONIALS */}
       <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20">
-        <div className="overline mb-3">Used by candidates across India</div>
+        <div className="eyebrow mb-3">Used by candidates across India</div>
         <h2 className="font-heading font-black text-4xl sm:text-5xl tracking-tighter mb-12 max-w-3xl text-balance">From the shortlist to the offer letter — in weeks.</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
@@ -395,7 +390,7 @@ export default function Landing() {
       {/* FAQ */}
       <section className="bg-white border-y border-[#E5E5E5]">
         <div className="max-w-5xl mx-auto px-6 sm:px-8 lg:px-12 py-20">
-          <div className="overline mb-3">FAQ</div>
+          <div className="eyebrow mb-3">FAQ</div>
           <h2 className="font-heading font-black text-4xl sm:text-5xl tracking-tighter mb-10">Everything you wanted to ask.</h2>
           <Accordion type="single" collapsible className="border-t border-[#E5E5E5]">
             {[
@@ -421,7 +416,7 @@ export default function Landing() {
         <div className="absolute -right-40 -bottom-40 w-[520px] h-[520px] rounded-full bg-[#0055FF] opacity-20 blur-3xl" />
         <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-24 flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8">
           <div>
-            <div className="overline text-white/60 mb-3">Start free</div>
+            <div className="eyebrow text-white/60 mb-3">Start free</div>
             <h2 className="font-heading font-black text-5xl sm:text-6xl lg:text-7xl tracking-tighter text-balance max-w-3xl leading-[0.95]">
               2 free scans.<br/>Upgrade to <span className="text-[#34C759]">Pro</span> at <span className="text-[#0055FF]">₹399/mo</span> for unlimited.
             </h2>
@@ -430,7 +425,7 @@ export default function Landing() {
             <Button onClick={() => navigate('/signup')} className="btn-primary text-base" data-testid="bottom-cta-signup">
               Start Free <ArrowUpRight className="w-4 h-4 ml-2" />
             </Button>
-            <Button onClick={() => navigate('/pricing')} className="bg-white text-[#0A192F] hover:bg-white/90 rounded-none px-6 py-3 font-semibold" data-testid="bottom-cta-pricing">See plans</Button>
+            <Button onClick={() => navigate('/pricing')} className="bg-white text-[#0A192F] hover:bg-white/90 rounded-md px-6 py-3 font-semibold" data-testid="bottom-cta-pricing">See plans</Button>
           </div>
         </div>
       </section>

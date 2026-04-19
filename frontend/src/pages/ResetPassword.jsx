@@ -29,7 +29,7 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-[#FAFAFA]" data-testid="reset-page">
       <Navbar />
       <div className="max-w-md mx-auto px-6 py-16">
-        <div className="overline mb-3">Forgot password?</div>
+        <div className="eyebrow mb-3">Forgot password?</div>
         <h1 className="font-heading font-black text-4xl tracking-tighter mb-8">Reset your password</h1>
         {done ? (
           <div className="border border-[#E5E5E5] bg-white p-8 space-y-4">
@@ -39,12 +39,12 @@ export default function ResetPassword() {
         ) : (
           <form onSubmit={onSubmit} className="border border-[#E5E5E5] bg-white p-8 space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="overline">Email</Label>
-              <Input id="email" type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="rounded-none border-[#E5E5E5]" data-testid="reset-email" />
+              <Label htmlFor="email" className="eyebrow">Email</Label>
+              <Input id="email" type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="rounded-md border-[#E5E5E5]" data-testid="reset-email" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="np" className="overline">New password</Label>
-              <Input id="np" type="password" required minLength={6} value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} className="rounded-none border-[#E5E5E5]" data-testid="reset-newpass" />
+              <Label htmlFor="np" className="eyebrow">New password</Label>
+              <Input id="np" type="password" required minLength={6} value={newPassword} onChange={(e)=>setNewPassword(e.target.value)} className="rounded-md border-[#E5E5E5]" data-testid="reset-newpass" />
             </div>
             <Button type="submit" disabled={loading} className="btn-primary w-full" data-testid="reset-submit">
               {loading ? "Resetting…" : "Reset password"}

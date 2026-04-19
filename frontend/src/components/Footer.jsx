@@ -10,7 +10,7 @@ export default function Footer() {
           <p className="text-sm text-[#6B7280] mt-3 max-w-sm">AI-powered career intelligence for the Indian job market. Check your ATS score, discover roles, and land the interview.</p>
         </div>
         <div>
-          <div className="overline mb-3">Product</div>
+          <div className="eyebrow mb-3">Product</div>
           <ul className="space-y-2 text-sm">
             <li><Link to="/pricing" className="hover:text-[#0055FF]">Pricing</Link></li>
             <li><Link to="/affiliate" className="hover:text-[#0055FF]">Affiliate</Link></li>
@@ -18,7 +18,7 @@ export default function Footer() {
           </ul>
         </div>
         <div>
-          <div className="overline mb-3">Account</div>
+          <div className="eyebrow mb-3">Account</div>
           <ul className="space-y-2 text-sm">
             <li><Link to="/login" className="hover:text-[#0055FF]">Login</Link></li>
             <li><Link to="/signup" className="hover:text-[#0055FF]">Sign up</Link></li>

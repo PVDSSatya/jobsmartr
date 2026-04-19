@@ -35,10 +35,10 @@ export default function AffiliateDashboard() {
     <div className="min-h-screen bg-[#FAFAFA]" data-testid="affiliate-dashboard-page">
       <Navbar />
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-10">
-        <div className="overline mb-2">Affiliate Dashboard</div>
+        <div className="eyebrow mb-2">Affiliate Dashboard</div>
         <h1 className="font-heading font-black text-4xl sm:text-5xl tracking-tighter mb-8">Your referral performance</h1>
 
-        {loading && <div className="overline">Loading…</div>}
+        {loading && <div className="eyebrow">Loading…</div>}
 
         {!loading && !data?.affiliate && (
           <div className="border border-[#E5E5E5] bg-white p-8">
@@ -58,7 +58,7 @@ export default function AffiliateDashboard() {
             </div>
 
             <div className="border border-[#E5E5E5] bg-white p-6 mb-8">
-              <div className="overline mb-3">Your referral link</div>
+              <div className="eyebrow mb-3">Your referral link</div>
               <div className="flex items-center gap-3 border border-[#E5E5E5] bg-[#FAFAFA] p-3 font-mono text-sm break-all">
                 <span className="flex-1" data-testid="aff-ref-link">{refLink(data.affiliate.code)}</span>
                 <Button onClick={() => copy(refLink(data.affiliate.code))} className="btn-secondary text-xs py-2" data-testid="copy-ref-link"><Copy className="w-3 h-3 mr-1" /> Copy</Button>
@@ -67,7 +67,7 @@ export default function AffiliateDashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="border border-[#E5E5E5] bg-white">
-                <div className="p-5 border-b border-[#E5E5E5] overline">Referrals ({data.referrals.length})</div>
+                <div className="p-5 border-b border-[#E5E5E5] eyebrow">Referrals ({data.referrals.length})</div>
                 <ul className="divide-y divide-[#E5E5E5]">
                   {data.referrals.slice(0, 20).map((r, i) => (
                     <li key={i} className="p-4 flex items-center justify-between text-sm">
@@ -79,7 +79,7 @@ export default function AffiliateDashboard() {
                 </ul>
               </div>
               <div className="border border-[#E5E5E5] bg-white">
-                <div className="p-5 border-b border-[#E5E5E5] overline">Commissions ({data.commissions.length})</div>
+                <div className="p-5 border-b border-[#E5E5E5] eyebrow">Commissions ({data.commissions.length})</div>
                 <ul className="divide-y divide-[#E5E5E5]">
                   {data.commissions.slice(0, 20).map((c, i) => (
                     <li key={i} className="p-4 flex items-center justify-between text-sm">
@@ -104,7 +104,7 @@ export default function AffiliateDashboard() {
 function Cell({ icon: Icon, label, value, mono, testid }) {
   return (
     <div className="p-6 border-r last:border-r-0 border-[#E5E5E5]" data-testid={testid}>
-      <div className="flex items-center gap-2 overline mb-2">{Icon && <Icon className="w-3 h-3" />}{label}</div>
+      <div className="flex items-center gap-2 eyebrow mb-2">{Icon && <Icon className="w-3 h-3" />}{label}</div>
       <div className={`font-heading font-black text-3xl tracking-tighter text-[#0A192F] ${mono ? 'font-mono' : ''}`}>{value}</div>
     </div>
   );

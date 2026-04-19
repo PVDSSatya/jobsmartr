@@ -21,17 +21,17 @@ export default function CareerInsights() {
     <div className="min-h-screen bg-[#FAFAFA]" data-testid="insights-page">
       <Navbar />
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-10">
-        <div className="overline mb-2">Career Insights · India</div>
+        <div className="eyebrow mb-2">Career Insights · India</div>
         <h1 className="font-heading font-black text-4xl sm:text-5xl tracking-tighter mb-3">Roles you qualify for — and salaries to target.</h1>
         <p className="text-sm text-[#6B7280] mb-8">Calibrated for the Indian job market in ₹ LPA (Lakhs per Annum).</p>
 
-        {!data && <div className="overline">Loading…</div>}
+        {!data && <div className="eyebrow">Loading…</div>}
 
         {data && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Jobs */}
             <div className="lg:col-span-8 border border-[#E5E5E5] bg-white">
-              <div className="p-6 border-b border-[#E5E5E5] flex items-center gap-2"><Target className="w-4 h-4" /> <span className="overline">Recommended Roles</span></div>
+              <div className="p-6 border-b border-[#E5E5E5] flex items-center gap-2"><Target className="w-4 h-4" /> <span className="eyebrow">Recommended Roles</span></div>
               <ul className="divide-y divide-[#E5E5E5]" data-testid="recommended-jobs-list">
                 {jobs.map((j, i) => (
                   <li key={i} className="p-6">
@@ -41,7 +41,7 @@ export default function CareerInsights() {
                         <div className="text-sm text-[#6B7280] mt-1">{j.why}</div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <div className="overline">Match</div>
+                        <div className="eyebrow">Match</div>
                         <div className="font-heading font-black text-2xl tracking-tighter text-[#0055FF]">{j.match}%</div>
                       </div>
                     </div>
@@ -61,7 +61,7 @@ export default function CareerInsights() {
 
             {/* Skill Gaps */}
             <div className="lg:col-span-4 border border-[#E5E5E5] bg-white">
-              <div className="p-6 border-b border-[#E5E5E5] flex items-center gap-2"><TrendingUp className="w-4 h-4" /> <span className="overline">Skill Gap Analysis</span></div>
+              <div className="p-6 border-b border-[#E5E5E5] flex items-center gap-2"><TrendingUp className="w-4 h-4" /> <span className="eyebrow">Skill Gap Analysis</span></div>
               <ul className="divide-y divide-[#E5E5E5]" data-testid="skill-gaps-list">
                 {gaps.map((g, i) => (
                   <li key={i} className="p-5">
@@ -70,7 +70,7 @@ export default function CareerInsights() {
                       <div className="font-heading font-bold tracking-tight">{g.skill}</div>
                     </div>
                     <div className="text-sm text-[#6B7280]">{g.reason}</div>
-                    {g.unlocks_role && <div className="mt-2 text-xs overline">Unlocks → {g.unlocks_role}</div>}
+                    {g.unlocks_role && <div className="mt-2 text-xs eyebrow">Unlocks → {g.unlocks_role}</div>}
                   </li>
                 ))}
                 {gaps.length === 0 && <li className="p-6 text-sm text-[#6B7280]">No major gaps detected.</li>}
