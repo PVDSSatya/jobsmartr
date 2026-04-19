@@ -107,7 +107,7 @@ export default function Landing() {
               Get hired <span className="text-[#0055FF]">smarter</span>,<br/>not harder.
             </h1>
             <p className="text-lg text-[#6B7280] mt-7 max-w-xl leading-relaxed">
-              Check your ATS score, discover what jobs you qualify for, and see how much you can earn — powered by an AI career intelligence engine built for India.
+              Check your ATS score, discover what jobs you qualify for, and see how much you can earn — powered by an AI career intelligence engine built for the growing job market.
             </p>
             <div className="flex flex-wrap gap-3 mt-8">
               <Button onClick={() => navigate('/signup')} className="btn-primary text-base group" data-testid="hero-cta-primary">
