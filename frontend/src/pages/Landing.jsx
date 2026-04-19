@@ -101,7 +101,7 @@ export default function Landing() {
           <div className={`lg:col-span-7 ${heroIn ? 'animate-fade-up' : 'opacity-0'}`}>
             <div className="inline-flex items-center gap-2 border border-[#0A192F] px-3 py-1.5 mb-6">
               <span className="w-2 h-2 bg-[#34C759] animate-pulse" />
-              <span className="eyebrow">AI Career Intelligence · India</span>
+              <span className="eyebrow">AI Career Intelligence</span>
             </div>
             <h1 className="font-heading font-black text-5xl sm:text-6xl lg:text-7xl tracking-tighter leading-[0.95] text-balance text-[#0A192F]">
               Get hired <span className="text-[#0055FF]">smarter</span>,<br/>not harder.
