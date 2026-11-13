@@ -62,7 +62,8 @@ export default function Results() {
       .catch(e => toast.error(e?.response?.data?.detail || "Not found"))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [id]);
 
   const optimize = async () => {
     setOptimizing(true);
