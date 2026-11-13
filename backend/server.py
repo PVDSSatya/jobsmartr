@@ -27,22 +27,39 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # Env
-mongo_url = os.environ['MONGO_URL']
-DB_NAME = os.environ['DB_NAME']
-JWT_SECRET = os.environ['JWT_SECRET']
-EMERGENT_LLM_KEY = os.environ['EMERGENT_LLM_KEY']
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+DB_NAME = os.environ.get('DB_NAME', 'jobsmartr')
+JWT_SECRET = os.environ.get('JWT_SECRET', 'jobsmartr_secret_key_default')
+EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', 'mock')
 JWT_ALG = 'HS256'
 JWT_EXP_DAYS = 30
 EMERGENT_AUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
-client = AsyncIOMotorClient(mongo_url)
-db = client[DB_NAME]
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Resilient MongoDB initialization (live instance or in-memory fallback)
+client = None
+db = None
+try:
+    import pymongo
+    test_client = pymongo.MongoClient(mongo_url, serverSelectionTimeoutMS=1200)
+    test_client.server_info()
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[DB_NAME]
+    logger.info(f"Connected to live MongoDB at {mongo_url}")
+except Exception as e:
+    logger.warning(f"Live MongoDB at {mongo_url} unavailable ({e}); utilizing in-memory database fallback.")
+    try:
+        from mongomock_motor import AsyncMongoMockClient
+        client = AsyncMongoMockClient()
+        db = client[DB_NAME]
+    except Exception:
+        client = AsyncIOMotorClient(mongo_url)
+        db = client[DB_NAME]
 
 app = FastAPI(title="Job Smartr API")
 api_router = APIRouter(prefix="/api")
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 
 # =============== MODELS ===============
@@ -718,4 +735,5 @@ app.add_middleware(
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client is not None and hasattr(client, "close"):
+        client.close()

@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-import asyncio
+import httpx
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger("emergentintegrations")
@@ -25,30 +25,56 @@ class LlmChat:
 
     async def send_message(self, message: UserMessage) -> str:
         prompt = message.text
-        # If API key is available and litellm is installed, attempt real LLM call
+        # If real API key is set, attempt direct provider call
         if self.api_key and self.api_key not in ("mock", "placeholder", "your_key_here", "sk-mock"):
             try:
-                import litellm
-                model_name = self.model
-                if self.provider == "anthropic" and not model_name.startswith("claude"):
-                    model_name = f"anthropic/{model_name}"
-                elif self.provider == "openai" and not model_name.startswith("gpt"):
-                    model_name = f"openai/{model_name}"
-                
-                messages = []
-                if self.system_message:
-                    messages.append({"role": "system", "content": self.system_message})
-                messages.append({"role": "user", "content": prompt})
-
-                response = await litellm.acompletion(
-                    model=model_name,
-                    messages=messages,
-                    api_key=self.api_key,
-                    temperature=0.2,
-                )
-                return response.choices[0].message.content
+                # 1) If Anthropic key
+                if self.api_key.startswith("sk-ant-") or self.provider == "anthropic":
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        resp = await client.post(
+                            "https://api.anthropic.com/v1/messages",
+                            headers={
+                                "x-api-key": self.api_key,
+                                "anthropic-version": "2023-06-01",
+                                "content-type": "application/json"
+                            },
+                            json={
+                                "model": "claude-3-5-sonnet-20241022",
+                                "max_tokens": 4096,
+                                "system": self.system_message,
+                                "messages": [{"role": "user", "content": prompt}]
+                            }
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            return data["content"][0]["text"]
+                        else:
+                            logger.warning(f"Anthropic API returned {resp.status_code}: {resp.text}")
+                # 2) If OpenAI key
+                elif self.api_key.startswith("sk-") or self.provider == "openai":
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        resp = await client.post(
+                            "https://api.openai.com/v1/chat/completions",
+                            headers={
+                                "Authorization": f"Bearer {self.api_key}",
+                                "content-type": "application/json"
+                            },
+                            json={
+                                "model": "gpt-4o",
+                                "messages": [
+                                    {"role": "system", "content": self.system_message},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                "temperature": 0.2
+                            }
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            return data["choices"][0]["message"]["content"]
+                        else:
+                            logger.warning(f"OpenAI API returned {resp.status_code}: {resp.text}")
             except Exception as e:
-                logger.warning(f"Live LLM call failed ({e}). Falling back to local intelligence generator.")
+                logger.warning(f"Direct LLM call failed ({e}). Falling back to local intelligence generator.")
 
         # Fallback intelligent local response generator matching the schema requested
         return self._generate_fallback(prompt)
