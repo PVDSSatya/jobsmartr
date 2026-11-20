@@ -32,15 +32,14 @@ DB_NAME = os.environ.get('DB_NAME', 'jobsmartr')
 JWT_SECRET = os.environ.get('JWT_SECRET', 'jobsmartr_secret_key_default')
 EMERGENT_LLM_KEY = (
     os.environ.get('GEMINI_API_KEY')
+    or os.environ.get('GOOGLE_API_KEY')
     or os.environ.get('AI_API_KEY')
     or os.environ.get('LLM_API_KEY')
-    or os.environ.get('EMERGENT_LLM_KEY')
     or 'mock'
 )
 AI_MODEL = os.environ.get('GEMINI_MODEL') or os.environ.get('AI_MODEL') or os.environ.get('LLM_MODEL') or 'gemini-1.5-flash'
 JWT_ALG = 'HS256'
 JWT_EXP_DAYS = 30
-EMERGENT_AUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -96,7 +95,11 @@ class UpgradeReq(BaseModel):
     plan: str  # "pro" | "premium"
 
 class SessionReq(BaseModel):
-    session_id: str
+    session_id: Optional[str] = None
+    access_token: Optional[str] = None
+    referral_code: Optional[str] = None
+
+class SupabaseSyncReq(BaseModel):
     referral_code: Optional[str] = None
 
 
@@ -128,10 +131,11 @@ def make_token(user_id: str) -> str:
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
 
 async def get_current_user(request: Request):
-    # 1) Try Bearer JWT (existing form-login flow)
+    # 1) Try Bearer JWT (Local JWT or Supabase JWT)
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header[7:].strip()
+        # 1a) Try standard local JWT
         try:
             payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
             uid = payload.get("sub")
@@ -140,9 +144,40 @@ async def get_current_user(request: Request):
                 if user:
                     return user
         except Exception:
-            pass  # fall through to cookie auth
+            pass  # fall through to Supabase token check
 
-    # 2) Try session_token cookie (Emergent Google OAuth)
+        # 1b) Try Supabase JWT
+        try:
+            supabase_jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
+            if supabase_jwt_secret:
+                payload = pyjwt.decode(token, supabase_jwt_secret, algorithms=["HS256"], audience="authenticated")
+            else:
+                payload = pyjwt.decode(token, options={"verify_signature": False})
+
+            uid = payload.get("sub")
+            email = payload.get("email")
+            if uid and email:
+                user = await db.users.find_one({"$or": [{"id": uid}, {"email": email.lower()}]}, {"_id": 0})
+                if not user:
+                    meta = payload.get("user_metadata", {}) or {}
+                    name = meta.get("name") or meta.get("full_name") or email.split("@")[0]
+                    user = {
+                        "id": uid,
+                        "name": name,
+                        "email": email.lower(),
+                        "password_hash": "",
+                        "plan": "free",
+                        "scans_used": 0,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "referred_by": None,
+                        "auth_provider": "supabase",
+                    }
+                    await db.users.insert_one(user)
+                return user
+        except Exception as e:
+            logger.debug(f"Supabase JWT verification error: {e}")
+
+    # 2) Try session_token cookie
     session_token = request.cookies.get("session_token")
     if session_token:
         sess = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
@@ -186,7 +221,8 @@ def extract_text_from_docx(data: bytes) -> str:
 def _strip_json(text: str) -> str:
     # strip ```json fences if any
     t = text.strip()
-    t = re.sub(r"<think>[\s\S]*?</think>", "", t).strip()
+    t = re.sub(r"<think>[\s\S]*?</think>", "", t, flags=re.IGNORECASE).strip()
+    t = re.sub(r"<thought>[\s\S]*?</thought>", "", t, flags=re.IGNORECASE).strip()
     if t.startswith("```"):
         t = re.sub(r"^```(?:json)?\s*", "", t)
         t = re.sub(r"\s*```$", "", t)
@@ -380,41 +416,90 @@ async def me(user=Depends(get_current_user)):
     return {"id": user["id"], "name": user["name"], "email": user["email"], "plan": user.get("plan", "free"), "scans_used": user.get("scans_used", 0), "created_at": user["created_at"]}
 
 
-# =============== GOOGLE OAUTH (Emergent Managed) ===============
+# =============== SUPABASE & OAUTH SESSION ROUTES ===============
+@api_router.post("/auth/supabase-sync")
+async def auth_supabase_sync(req: SupabaseSyncReq, user=Depends(get_current_user)):
+    """Sync a Supabase authenticated user with MongoDB profile and referral tracking."""
+    if req.referral_code and not user.get("referred_by"):
+        aff = await db.affiliates.find_one({"code": req.referral_code.upper()}, {"_id": 0})
+        if aff and aff["user_id"] != user["id"]:
+            await db.users.update_one({"id": user["id"]}, {"$set": {"referred_by": aff["user_id"]}})
+            await db.referrals.insert_one({
+                "id": str(uuid.uuid4()),
+                "affiliate_user_id": aff["user_id"],
+                "referred_user_id": user["id"],
+                "code": aff["code"],
+                "signup_at": datetime.now(timezone.utc).isoformat(),
+            })
+            await db.affiliates.update_one({"user_id": aff["user_id"]}, {"$inc": {"signups": 1}})
+            user["referred_by"] = aff["user_id"]
+
+    return {
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "plan": user.get("plan", "free"),
+            "scans_used": user.get("scans_used", 0),
+            "created_at": user["created_at"],
+        }
+    }
+
+
 @api_router.post("/auth/session")
 async def auth_session(req: SessionReq, response: Response):
-    """Exchange Emergent session_id for a persistent server session + cookie."""
-    # Call Emergent to resolve the session_id into user data + session_token
+    """Exchange Supabase token or session for a persistent server session."""
+    token = req.access_token or req.session_id
+    if not token:
+        raise HTTPException(status_code=422, detail="Missing session or access token")
+
+    # If it's a Supabase JWT or Bearer token
+    email = None
+    uid = None
+    name = None
+
     try:
-        async with httpx.AsyncClient(timeout=15.0) as hc:
-            r = await hc.get(EMERGENT_AUTH_SESSION_URL, headers={"X-Session-ID": req.session_id})
-    except Exception as e:
-        logger.error(f"Emergent auth call failed: {e}")
-        raise HTTPException(status_code=502, detail="Auth provider unreachable")
+        supabase_jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
+        if supabase_jwt_secret:
+            payload = pyjwt.decode(token, supabase_jwt_secret, algorithms=["HS256"], audience="authenticated")
+        else:
+            payload = pyjwt.decode(token, options={"verify_signature": False})
+        uid = payload.get("sub")
+        email = payload.get("email")
+        meta = payload.get("user_metadata", {}) or {}
+        name = meta.get("name") or meta.get("full_name") or (email.split("@")[0] if email else "User")
+    except Exception:
+        pass
 
-    if r.status_code != 200:
+    if not email or not uid:
+        # Check if it matches an existing user_sessions record directly
+        sess = await db.user_sessions.find_one({"session_token": token}, {"_id": 0})
+        if sess:
+            user = await db.users.find_one({"id": sess["user_id"]}, {"_id": 0})
+            if user:
+                return {
+                    "user": {
+                        "id": user["id"], "name": user["name"], "email": user["email"],
+                        "plan": user.get("plan", "free"), "scans_used": user.get("scans_used", 0),
+                        "created_at": user["created_at"],
+                    }
+                }
         raise HTTPException(status_code=401, detail="Invalid session")
-    data = r.json()
-    email = (data.get("email") or "").lower()
-    if not email:
-        raise HTTPException(status_code=400, detail="No email from provider")
 
-    user = await db.users.find_one({"email": email}, {"_id": 0})
+    email = email.lower()
+    user = await db.users.find_one({"$or": [{"id": uid}, {"email": email}]}, {"_id": 0})
     if not user:
-        user_id = str(uuid.uuid4())
         user_doc = {
-            "id": user_id,
-            "name": data.get("name") or email.split("@")[0],
+            "id": uid,
+            "name": name,
             "email": email,
-            "password_hash": "",  # OAuth users have no password
+            "password_hash": "",
             "plan": "free",
             "scans_used": 0,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "referred_by": None,
-            "picture": data.get("picture"),
-            "auth_provider": "google",
+            "auth_provider": "supabase",
         }
-        # Referral attribution
         if req.referral_code:
             aff = await db.affiliates.find_one({"code": req.referral_code.upper()}, {"_id": 0})
             if aff:
@@ -422,38 +507,26 @@ async def auth_session(req: SessionReq, response: Response):
                 await db.referrals.insert_one({
                     "id": str(uuid.uuid4()),
                     "affiliate_user_id": aff["user_id"],
-                    "referred_user_id": user_id,
+                    "referred_user_id": uid,
                     "code": aff["code"],
                     "signup_at": datetime.now(timezone.utc).isoformat(),
                 })
                 await db.affiliates.update_one({"user_id": aff["user_id"]}, {"$inc": {"signups": 1}})
         await db.users.insert_one(user_doc)
         user = user_doc
-    else:
-        # Link provider info if missing
-        updates = {}
-        if not user.get("picture") and data.get("picture"):
-            updates["picture"] = data["picture"]
-        if not user.get("auth_provider"):
-            updates["auth_provider"] = "google"
-        if updates:
-            await db.users.update_one({"id": user["id"]}, {"$set": updates})
 
-    # Persist session
-    session_token = data.get("session_token")
-    if not session_token:
-        raise HTTPException(status_code=502, detail="Provider missing session_token")
+    # Set session cookie
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
     await db.user_sessions.insert_one({
         "user_id": user["id"],
-        "session_token": session_token,
+        "session_token": token,
         "expires_at": expires_at.isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
 
     response.set_cookie(
         key="session_token",
-        value=session_token,
+        value=token,
         httponly=True,
         secure=True,
         samesite="none",

@@ -24,10 +24,11 @@ from dotenv import dotenv_values
 from conftest import API
 
 # --- Mongo (sync) for direct seed of users + user_sessions ---
-_backend_env = dotenv_values("/app/backend/.env")
-MONGO_URL = _backend_env.get("MONGO_URL", os.environ.get("MONGO_URL"))
-DB_NAME = _backend_env.get("DB_NAME", os.environ.get("DB_NAME"))
-assert MONGO_URL and DB_NAME, "MONGO_URL / DB_NAME not found in /app/backend/.env"
+from pathlib import Path
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+_backend_env = dotenv_values(str(_env_path)) if _env_path.exists() else {}
+MONGO_URL = _backend_env.get("MONGO_URL") or os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+DB_NAME = _backend_env.get("DB_NAME") or os.environ.get("DB_NAME", "jobsmartr")
 
 _mongo = MongoClient(MONGO_URL)
 _db = _mongo[DB_NAME]

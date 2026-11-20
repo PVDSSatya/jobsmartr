@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { Loader2 } from "lucide-react";
 
 export default function AuthCallback() {
@@ -14,30 +14,25 @@ export default function AuthCallback() {
     if (hasProcessed.current) return;
     hasProcessed.current = true;
 
-    const hash = window.location.hash || "";
-    const match = hash.match(/session_id=([^&]+)/);
-    const session_id = match ? decodeURIComponent(match[1]) : null;
-    const referral_code = sessionStorage.getItem("js_ref_code") || null;
-
-    if (!session_id) {
-      setError("Missing session. Please try signing in again.");
-      setTimeout(() => navigate("/login"), 1500);
-      return;
-    }
-
-    (async () => {
+    const handleCallback = async () => {
       try {
-        const r = await api.post("/auth/session", { session_id, referral_code });
-        sessionStorage.removeItem("js_ref_code");
-        // Clear URL hash so Emergent session_id is not leaked
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setAuthenticatedUser(r.data.user);
+        if (isSupabaseConfigured() && supabase) {
+          const { data, error: sessionErr } = await supabase.auth.getSession();
+          if (sessionErr) throw sessionErr;
+          if (data?.session) {
+            navigate("/dashboard", { replace: true });
+            return;
+          }
+        }
+        // If no session found in callback, redirect to login
         navigate("/dashboard", { replace: true });
       } catch (e) {
-        setError(e?.response?.data?.detail || "Google sign-in failed. Please try again.");
+        setError(e?.message || "Authentication failed. Please try again.");
         setTimeout(() => navigate("/login"), 1800);
       }
-    })();
+    };
+
+    handleCallback();
   }, [navigate, setAuthenticatedUser]);
 
   return (
@@ -52,7 +47,7 @@ export default function AuthCallback() {
           <>
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#0055FF]" />
             <div className="eyebrow mb-2">Signing you in</div>
-            <div className="font-heading font-bold text-xl tracking-tight">Finishing Google authentication…</div>
+            <div className="font-heading font-bold text-xl tracking-tight">Finishing authentication…</div>
           </>
         )}
       </div>

@@ -16,9 +16,9 @@ class LlmChat:
         self.api_key = (
             api_key
             or os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("GOOGLE_API_KEY")
             or os.environ.get("AI_API_KEY")
             or os.environ.get("LLM_API_KEY")
-            or os.environ.get("EMERGENT_LLM_KEY")
             or ""
         )
         self.session_id = session_id or ""
@@ -35,7 +35,7 @@ class LlmChat:
         env_model = os.environ.get("GEMINI_MODEL") or os.environ.get("AI_MODEL") or os.environ.get("LLM_MODEL")
         if env_model:
             self.model = env_model
-        elif model and not model.startswith("gpt") and not model.startswith("claude"):
+        elif model and ("gemini" in model.lower()):
             self.model = model
         else:
             self.model = "gemini-1.5-flash"
@@ -59,6 +59,7 @@ class LlmChat:
                     "x-goog-api-key": self.api_key
                 }
 
+                # Prepare payload with JSON mode
                 payload: Dict[str, Any] = {
                     "contents": [
                         {
@@ -89,6 +90,22 @@ class LlmChat:
                         json=payload
                     )
 
+                    # If 400 happens (some Gemini models or endpoints reject responseMimeType/systemInstruction), retry simply
+                    if resp.status_code == 400:
+                        retry_prompt = f"{self.system_message}\n\n{prompt}" if self.system_message else prompt
+                        retry_payload = {
+                            "contents": [
+                                {"role": "user", "parts": [{"text": retry_prompt}]}
+                            ],
+                            "generationConfig": {"temperature": 0.2}
+                        }
+                        resp = await client.post(
+                            endpoint,
+                            headers=headers,
+                            params={"key": self.api_key},
+                            json=retry_payload
+                        )
+
                     if resp.status_code == 200:
                         data = resp.json()
                         candidates = data.get("candidates", [])
@@ -96,7 +113,7 @@ class LlmChat:
                             content = candidates[0].get("content", {})
                             parts = content.get("parts", [])
                             if parts and isinstance(parts, list):
-                                text = parts[0].get("text", "")
+                                text = "".join(p.get("text", "") for p in parts if isinstance(p, dict) and "text" in p)
                                 if text:
                                     return text
                         logger.warning(f"Unexpected response structure from Gemini API: {resp.text[:300]}")

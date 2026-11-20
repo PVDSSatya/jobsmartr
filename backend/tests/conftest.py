@@ -4,14 +4,20 @@ import time
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://resume-match-90.preview.emergentagent.com").rstrip("/")
-# Try to read from frontend .env if env var not set properly
+from pathlib import Path
+
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8000").rstrip("/")
+# Try to read from frontend .env if present
 try:
-    with open("/app/frontend/.env") as f:
-        for line in f:
-            if line.startswith("REACT_APP_BACKEND_URL="):
-                BASE_URL = line.split("=", 1)[1].strip().rstrip("/")
-                break
+    frontend_env = Path(__file__).resolve().parent.parent.parent / "frontend" / ".env"
+    if frontend_env.exists():
+        with open(frontend_env) as f:
+            for line in f:
+                if line.startswith("REACT_APP_BACKEND_URL="):
+                    val = line.split("=", 1)[1].strip().rstrip("/")
+                    if val:
+                        BASE_URL = val
+                    break
 except Exception:
     pass
 
