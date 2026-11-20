@@ -17,22 +17,26 @@ class LlmChat:
             api_key
             or os.environ.get("AI_API_KEY")
             or os.environ.get("LLM_API_KEY")
+            or os.environ.get("ANTHROPIC_API_KEY")
             or os.environ.get("OPENAI_API_KEY")
             or os.environ.get("EMERGENT_LLM_KEY")
-            or os.environ.get("ANTHROPIC_API_KEY")
             or ""
         )
         raw_base = (
             os.environ.get("AI_API_BASE_URL")
             or os.environ.get("LLM_BASE_URL")
-            or os.environ.get("OPENAI_BASE_URL")
-            or "http://127.0.0.1:31415/v1"
+            or os.environ.get("ANTHROPIC_BASE_URL")
+            or "http://127.0.0.1:31415"
         )
         self.base_url = raw_base.rstrip("/")
         self.session_id = session_id or ""
         self.system_message = system_message or ""
-        self.provider = "openai"
-        self.model = os.environ.get("AI_MODEL") or os.environ.get("LLM_MODEL") or "gpt-4o"
+        self.provider = "anthropic"
+        self.model = (
+            os.environ.get("AI_MODEL")
+            or os.environ.get("LLM_MODEL")
+            or "claude-3-5-sonnet-20241022"
+        )
 
     def with_model(self, provider: str, model: str):
         env_model = os.environ.get("AI_MODEL") or os.environ.get("LLM_MODEL")
@@ -45,60 +49,57 @@ class LlmChat:
 
     async def send_message(self, message: UserMessage) -> str:
         prompt = message.text
-        # If real API key is set, attempt provider call
+        # If a real API key is configured, call the Claude-compatible API provider
         if self.api_key and self.api_key not in ("mock", "placeholder", "your_key_here", "sk-mock"):
             try:
-                # 1) If Anthropic official API endpoint
-                if "anthropic.com" in self.base_url or (self.api_key.startswith("sk-ant-") and "31415" not in self.base_url):
-                    async with httpx.AsyncClient(timeout=90.0) as client:
-                        resp = await client.post(
-                            "https://api.anthropic.com/v1/messages",
-                            headers={
-                                "x-api-key": self.api_key,
-                                "anthropic-version": "2023-06-01",
-                                "content-type": "application/json"
-                            },
-                            json={
-                                "model": self.model if "claude" in self.model else "claude-3-5-sonnet-20241022",
-                                "max_tokens": 4096,
-                                "system": self.system_message,
-                                "messages": [{"role": "user", "content": prompt}]
-                            }
-                        )
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            return data["content"][0]["text"]
-                        else:
-                            logger.warning(f"Anthropic API returned {resp.status_code}: {resp.text}")
-
-                # 2) Standard OpenAI-compatible API endpoint (e.g. http://127.0.0.1:31415/v1, OpenAI, Groq, Ollama, etc.)
+                # Build Claude /v1/messages endpoint
+                base = self.base_url.rstrip("/")
+                if base.endswith("/v1/messages"):
+                    endpoint = base
+                elif base.endswith("/v1"):
+                    endpoint = f"{base}/messages"
+                elif base.endswith("/messages"):
+                    endpoint = base
                 else:
-                    endpoint = self.base_url
-                    if not endpoint.endswith("/chat/completions"):
-                        endpoint = f"{endpoint}/chat/completions"
+                    endpoint = f"{base}/v1/messages"
 
-                    headers = {
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json"
-                    }
-                    payload = {
-                        "model": self.model,
-                        "messages": [
-                            {"role": "system", "content": self.system_message},
-                            {"role": "user", "content": prompt}
-                        ],
-                        "temperature": 0.2
-                    }
+                # Standard Anthropic Claude headers
+                headers = {
+                    "x-api-key": self.api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json"
+                }
 
-                    async with httpx.AsyncClient(timeout=90.0) as client:
-                        resp = await client.post(endpoint, headers=headers, json=payload)
-                        if resp.status_code == 200:
-                            data = resp.json()
+                # Standard Anthropic Claude request payload
+                payload = {
+                    "model": self.model,
+                    "max_tokens": 4096,
+                    "messages": [
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.2
+                }
+                if self.system_message:
+                    payload["system"] = self.system_message
+
+                async with httpx.AsyncClient(timeout=90.0) as client:
+                    resp = await client.post(endpoint, headers=headers, json=payload)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        # Anthropic Claude format: content is a list of blocks
+                        if "content" in data and isinstance(data["content"], list) and len(data["content"]) > 0:
+                            for block in data["content"]:
+                                if isinstance(block, dict) and block.get("type") == "text":
+                                    return block.get("text", "")
+                            return data["content"][0].get("text", "")
+                        # Fallback if provider responds in OpenAI format
+                        elif "choices" in data and len(data["choices"]) > 0:
                             choice = data["choices"][0]
-                            content = choice["message"]["content"] if "message" in choice else choice.get("text", "")
-                            return content
+                            return choice["message"]["content"] if "message" in choice else choice.get("text", "")
                         else:
-                            logger.warning(f"AI Provider ({endpoint}) returned status {resp.status_code}: {resp.text}")
+                            logger.warning(f"Unexpected response structure from {endpoint}: {resp.text[:300]}")
+                    else:
+                        logger.warning(f"Claude API Provider ({endpoint}) returned status {resp.status_code}: {resp.text[:300]}")
 
             except Exception as e:
                 logger.warning(f"Live AI call to {self.base_url} failed ({e}). Falling back to local intelligence generator.")
