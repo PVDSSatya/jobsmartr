@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import logging
 import httpx
@@ -12,25 +13,44 @@ class UserMessage:
 
 class LlmChat:
     def __init__(self, api_key: Optional[str] = None, session_id: Optional[str] = None, system_message: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("EMERGENT_LLM_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or ""
+        self.api_key = (
+            api_key
+            or os.environ.get("AI_API_KEY")
+            or os.environ.get("LLM_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("EMERGENT_LLM_KEY")
+            or os.environ.get("ANTHROPIC_API_KEY")
+            or ""
+        )
+        raw_base = (
+            os.environ.get("AI_API_BASE_URL")
+            or os.environ.get("LLM_BASE_URL")
+            or os.environ.get("OPENAI_BASE_URL")
+            or "http://127.0.0.1:31415/v1"
+        )
+        self.base_url = raw_base.rstrip("/")
         self.session_id = session_id or ""
         self.system_message = system_message or ""
-        self.provider = "anthropic"
-        self.model = "claude-sonnet-4-5-20250929"
+        self.provider = "openai"
+        self.model = os.environ.get("AI_MODEL") or os.environ.get("LLM_MODEL") or "gpt-4o"
 
     def with_model(self, provider: str, model: str):
+        env_model = os.environ.get("AI_MODEL") or os.environ.get("LLM_MODEL")
+        if env_model:
+            self.model = env_model
+        else:
+            self.model = model
         self.provider = provider
-        self.model = model
         return self
 
     async def send_message(self, message: UserMessage) -> str:
         prompt = message.text
-        # If real API key is set, attempt direct provider call
+        # If real API key is set, attempt provider call
         if self.api_key and self.api_key not in ("mock", "placeholder", "your_key_here", "sk-mock"):
             try:
-                # 1) If Anthropic key
-                if self.api_key.startswith("sk-ant-") or self.provider == "anthropic":
-                    async with httpx.AsyncClient(timeout=60.0) as client:
+                # 1) If Anthropic official API endpoint
+                if "anthropic.com" in self.base_url or (self.api_key.startswith("sk-ant-") and "31415" not in self.base_url):
+                    async with httpx.AsyncClient(timeout=90.0) as client:
                         resp = await client.post(
                             "https://api.anthropic.com/v1/messages",
                             headers={
@@ -39,7 +59,7 @@ class LlmChat:
                                 "content-type": "application/json"
                             },
                             json={
-                                "model": "claude-3-5-sonnet-20241022",
+                                "model": self.model if "claude" in self.model else "claude-3-5-sonnet-20241022",
                                 "max_tokens": 4096,
                                 "system": self.system_message,
                                 "messages": [{"role": "user", "content": prompt}]
@@ -50,31 +70,38 @@ class LlmChat:
                             return data["content"][0]["text"]
                         else:
                             logger.warning(f"Anthropic API returned {resp.status_code}: {resp.text}")
-                # 2) If OpenAI key
-                elif self.api_key.startswith("sk-") or self.provider == "openai":
-                    async with httpx.AsyncClient(timeout=60.0) as client:
-                        resp = await client.post(
-                            "https://api.openai.com/v1/chat/completions",
-                            headers={
-                                "Authorization": f"Bearer {self.api_key}",
-                                "content-type": "application/json"
-                            },
-                            json={
-                                "model": "gpt-4o",
-                                "messages": [
-                                    {"role": "system", "content": self.system_message},
-                                    {"role": "user", "content": prompt}
-                                ],
-                                "temperature": 0.2
-                            }
-                        )
+
+                # 2) Standard OpenAI-compatible API endpoint (e.g. http://127.0.0.1:31415/v1, OpenAI, Groq, Ollama, etc.)
+                else:
+                    endpoint = self.base_url
+                    if not endpoint.endswith("/chat/completions"):
+                        endpoint = f"{endpoint}/chat/completions"
+
+                    headers = {
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    }
+                    payload = {
+                        "model": self.model,
+                        "messages": [
+                            {"role": "system", "content": self.system_message},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.2
+                    }
+
+                    async with httpx.AsyncClient(timeout=90.0) as client:
+                        resp = await client.post(endpoint, headers=headers, json=payload)
                         if resp.status_code == 200:
                             data = resp.json()
-                            return data["choices"][0]["message"]["content"]
+                            choice = data["choices"][0]
+                            content = choice["message"]["content"] if "message" in choice else choice.get("text", "")
+                            return content
                         else:
-                            logger.warning(f"OpenAI API returned {resp.status_code}: {resp.text}")
+                            logger.warning(f"AI Provider ({endpoint}) returned status {resp.status_code}: {resp.text}")
+
             except Exception as e:
-                logger.warning(f"Direct LLM call failed ({e}). Falling back to local intelligence generator.")
+                logger.warning(f"Live AI call to {self.base_url} failed ({e}). Falling back to local intelligence generator.")
 
         # Fallback intelligent local response generator matching the schema requested
         return self._generate_fallback(prompt)
