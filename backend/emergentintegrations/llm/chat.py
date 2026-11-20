@@ -15,94 +15,96 @@ class LlmChat:
     def __init__(self, api_key: Optional[str] = None, session_id: Optional[str] = None, system_message: Optional[str] = None):
         self.api_key = (
             api_key
+            or os.environ.get("GEMINI_API_KEY")
             or os.environ.get("AI_API_KEY")
             or os.environ.get("LLM_API_KEY")
-            or os.environ.get("ANTHROPIC_API_KEY")
-            or os.environ.get("OPENAI_API_KEY")
             or os.environ.get("EMERGENT_LLM_KEY")
             or ""
         )
-        raw_base = (
-            os.environ.get("AI_API_BASE_URL")
-            or os.environ.get("LLM_BASE_URL")
-            or os.environ.get("ANTHROPIC_BASE_URL")
-            or "http://127.0.0.1:31415"
-        )
-        self.base_url = raw_base.rstrip("/")
         self.session_id = session_id or ""
         self.system_message = system_message or ""
-        self.provider = "anthropic"
+        self.provider = "gemini"
         self.model = (
-            os.environ.get("AI_MODEL")
+            os.environ.get("GEMINI_MODEL")
+            or os.environ.get("AI_MODEL")
             or os.environ.get("LLM_MODEL")
-            or "claude-3-5-sonnet-20241022"
+            or "gemini-1.5-flash"
         )
 
     def with_model(self, provider: str, model: str):
-        env_model = os.environ.get("AI_MODEL") or os.environ.get("LLM_MODEL")
+        env_model = os.environ.get("GEMINI_MODEL") or os.environ.get("AI_MODEL") or os.environ.get("LLM_MODEL")
         if env_model:
             self.model = env_model
-        else:
+        elif model and not model.startswith("gpt") and not model.startswith("claude"):
             self.model = model
-        self.provider = provider
+        else:
+            self.model = "gemini-1.5-flash"
+        self.provider = "gemini"
         return self
 
     async def send_message(self, message: UserMessage) -> str:
         prompt = message.text
-        # If a real API key is configured, call the Claude-compatible API provider
+        # If a valid Gemini API key is configured, call Google Gemini Generative Language API
         if self.api_key and self.api_key not in ("mock", "placeholder", "your_key_here", "sk-mock"):
             try:
-                # Build Claude /v1/messages endpoint
-                base = self.base_url.rstrip("/")
-                if base.endswith("/v1/messages"):
-                    endpoint = base
-                elif base.endswith("/v1"):
-                    endpoint = f"{base}/messages"
-                elif base.endswith("/messages"):
-                    endpoint = base
-                else:
-                    endpoint = f"{base}/v1/messages"
+                # Strip prefix if user passed full model path
+                model_name = self.model
+                if model_name.startswith("models/"):
+                    model_name = model_name[len("models/"):]
 
-                # Standard Anthropic Claude headers
+                endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+
                 headers = {
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": self.api_key
                 }
 
-                # Standard Anthropic Claude request payload
-                payload = {
-                    "model": self.model,
-                    "max_tokens": 4096,
-                    "messages": [
-                        {"role": "user", "content": prompt}
+                payload: Dict[str, Any] = {
+                    "contents": [
+                        {
+                            "role": "user",
+                            "parts": [
+                                {"text": prompt}
+                            ]
+                        }
                     ],
-                    "temperature": 0.2
+                    "generationConfig": {
+                        "temperature": 0.2,
+                        "responseMimeType": "application/json"
+                    }
                 }
+
                 if self.system_message:
-                    payload["system"] = self.system_message
+                    payload["systemInstruction"] = {
+                        "parts": [
+                            {"text": self.system_message}
+                        ]
+                    }
 
                 async with httpx.AsyncClient(timeout=90.0) as client:
-                    resp = await client.post(endpoint, headers=headers, json=payload)
+                    resp = await client.post(
+                        endpoint,
+                        headers=headers,
+                        params={"key": self.api_key},
+                        json=payload
+                    )
+
                     if resp.status_code == 200:
                         data = resp.json()
-                        # Anthropic Claude format: content is a list of blocks
-                        if "content" in data and isinstance(data["content"], list) and len(data["content"]) > 0:
-                            for block in data["content"]:
-                                if isinstance(block, dict) and block.get("type") == "text":
-                                    return block.get("text", "")
-                            return data["content"][0].get("text", "")
-                        # Fallback if provider responds in OpenAI format
-                        elif "choices" in data and len(data["choices"]) > 0:
-                            choice = data["choices"][0]
-                            return choice["message"]["content"] if "message" in choice else choice.get("text", "")
-                        else:
-                            logger.warning(f"Unexpected response structure from {endpoint}: {resp.text[:300]}")
+                        candidates = data.get("candidates", [])
+                        if candidates and isinstance(candidates, list):
+                            content = candidates[0].get("content", {})
+                            parts = content.get("parts", [])
+                            if parts and isinstance(parts, list):
+                                text = parts[0].get("text", "")
+                                if text:
+                                    return text
+                        logger.warning(f"Unexpected response structure from Gemini API: {resp.text[:300]}")
                     else:
-                        logger.warning(f"Claude API Provider ({endpoint}) returned status {resp.status_code}: {resp.text[:300]}")
+                        logger.warning(f"Google Gemini API returned status {resp.status_code}: {resp.text[:300]}")
 
             except Exception as e:
-                logger.warning(f"Live AI call to {self.base_url} failed ({e}). Falling back to local intelligence generator.")
+                logger.warning(f"Live Gemini API call failed ({e}). Falling back to local intelligence generator.")
 
         # Fallback intelligent local response generator matching the schema requested
         return self._generate_fallback(prompt)

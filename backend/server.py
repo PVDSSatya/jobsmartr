@@ -31,19 +31,13 @@ mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 DB_NAME = os.environ.get('DB_NAME', 'jobsmartr')
 JWT_SECRET = os.environ.get('JWT_SECRET', 'jobsmartr_secret_key_default')
 EMERGENT_LLM_KEY = (
-    os.environ.get('AI_API_KEY')
+    os.environ.get('GEMINI_API_KEY')
+    or os.environ.get('AI_API_KEY')
     or os.environ.get('LLM_API_KEY')
-    or os.environ.get('OPENAI_API_KEY')
     or os.environ.get('EMERGENT_LLM_KEY')
     or 'mock'
 )
-AI_API_BASE_URL = (
-    os.environ.get('AI_API_BASE_URL')
-    or os.environ.get('LLM_BASE_URL')
-    or os.environ.get('OPENAI_BASE_URL')
-    or 'http://127.0.0.1:31415/v1'
-)
-AI_MODEL = os.environ.get('AI_MODEL') or os.environ.get('LLM_MODEL') or 'gpt-4o'
+AI_MODEL = os.environ.get('GEMINI_MODEL') or os.environ.get('AI_MODEL') or os.environ.get('LLM_MODEL') or 'gemini-1.5-flash'
 JWT_ALG = 'HS256'
 JWT_EXP_DAYS = 30
 EMERGENT_AUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
@@ -205,7 +199,7 @@ def _strip_json(text: str) -> str:
 
 async def _llm_json(system_msg: str, user_text: str, session_id: str) -> Dict[str, Any]:
     chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=session_id, system_message=system_msg)\
-        .with_model("openai", AI_MODEL)
+        .with_model("gemini", AI_MODEL)
     resp = await chat.send_message(UserMessage(text=user_text))
     try:
         return json.loads(_strip_json(resp))
